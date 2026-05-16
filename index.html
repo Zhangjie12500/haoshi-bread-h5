@@ -1,0 +1,4021 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>豪士 HAOSHI — Everyday Fresh Bread</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,600&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- Batch 1: Asset Preloading System -->
+<script src="assets/assets-manifest.js"></script>
+<script src="assets/font-config.js"></script>
+<script src="assets/preloader.js"></script>
+<script src="assets/spark-particles.js"></script>
+<script src="assets/audio-manager.js"></script>
+<script src="assets/sound-toggle.js"></script>
+<!-- Batch 2: Factory Interaction System -->
+<script src="assets/factory-interaction.js"></script>
+<!-- Section FX Controller -->
+<script src="assets/fx-config.js"></script>
+<script src="assets/section-cursor-fx.js"></script>
+<script src="assets/story-cursor-fx.js"></script>
+<script src="assets/products-cursor-fx.js"></script>
+<script src="assets/footer-cursor-fx.js"></script>
+<script src="assets/cta-cursor-fx.js"></script>
+<script src="assets/fx-renderer.js"></script>
+<script src="assets/section-fx.js"></script>
+<style>
+/* ============================================================
+   批次 3: 自定义选区颜色
+   ============================================================ */
+::selection {
+  background: #D9A441;
+  color: #1A120B;
+}
+::-moz-selection {
+  background: #D9A441;
+  color: #1A120B;
+}
+
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --ink:      #1C1208;
+  --cream:    #FAF6EE;
+  --parchment:#F2EAD8;
+  --gold:     #C07B1A;
+  --gold-lt:  #E8A93A;
+  --rust:     #7A3A0A;
+  --mist:     #EDE8DC;
+  --health:   #5D8E62;
+  --health-bg:#EAF4EC;
+  --fog:      rgba(28,18,8,0.06);
+  --border:   rgba(28,18,8,0.10);
+  --sans:     'Instrument Sans', sans-serif;
+  --serif:    'Cormorant Garamond', serif;
+  --mono:     'DM Mono', monospace;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: var(--sans);
+  background: var(--cream);
+  color: var(--ink);
+  overflow-x: hidden;
+  cursor: none;
+}
+img { display: block; width: 100%; height: 100%; object-fit: cover; }
+a { text-decoration: none; color: inherit; }
+
+/* ============================================================
+   GRAIN OVERLAY — 背景质感（告别纯色）
+   ============================================================ */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  opacity: 0.032;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* ============================================================
+   CURSOR — 霓虹跟随光标
+   ============================================================ */
+*{cursor:none!important}
+.cursor-follower{position:fixed;z-index:9999;pointer-events:none;border-radius:50%;mix-blend-mode:difference}
+.cursor-main{width:16px;height:16px;background:#E8A93A;transition:transform .1s}
+.cursor-outline{width:40px;height:40px;border:2px solid #E8A93A;opacity:.8;transition:transform .2s,border-color .2s}
+.cursor-glow{width:60px;height:60px;background:rgba(232,169,58,.3);filter:blur(12px);opacity:.6}
+
+/* Footer 深色背景 cursor 主题 */
+footer ~ .cursor-follower,
+footer + .cursor-follower,
+body:has(footer .cursor-follower) .cursor-follower,
+footer ~ * .cursor-follower {
+  background: #FAF6EE;
+  border-color: #FAF6EE;
+}
+
+/* ============================================================
+   MOUSE-FOLLOW LIGHT — 鼠标跟随光晕
+   ============================================================ */
+/* 热场光晕 - 最高层，确保不被其他 canvas 覆盖 */
+#mouse-light {
+  position: fixed; inset: 0; z-index: 9999;
+  pointer-events: none;
+  background: radial-gradient(600px circle at 50% 50%,
+    rgba(192,123,26,0.07) 0%,
+    transparent 70%);
+  transition: background 0.05s linear;
+}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+/* ---- 文字翻滚效果（仅限：导航/按钮/产品链接） ---- */
+.tilt-wrap {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+.tilt-wrap span {
+  display: inline-block;
+  transition: transform .35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* hover 时向上翻滚 */
+.tilt-wrap:hover span {
+  transform: translateY(-105%);
+}
+/* 键盘焦点时也触发 */
+.tilt-wrap:focus-within span {
+  transform: translateY(-105%);
+}
+@media (hover: none) {
+  .tilt-wrap span { transform: none !important; }
+  .tilt-wrap { overflow: visible; }
+}
+
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.4rem 3rem;
+  transition: background .35s, border-color .35s;
+}
+nav.scrolled {
+  background: rgba(250,246,238,0.88);
+  backdrop-filter: blur(14px);
+  border-bottom: 0.5px solid var(--border);
+}
+.logo {
+  font-family: var(--serif);
+  font-size: 1.5rem; font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--rust);
+}
+.logo em { color: var(--gold); font-style: normal; }
+.nav-links {
+  display: flex; gap: 2.5rem; list-style: none;
+}
+.nav-links a {
+  font-size: 0.72rem; font-weight: 400;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(28,18,8,0.5);
+  transition: color .2s;
+  position: relative;
+}
+.nav-links a::after {
+  content: ''; position: absolute; bottom: -3px; left: 0; right: 0;
+  height: 0.5px; background: var(--gold);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .25s ease;
+}
+.nav-links a:hover { color: var(--ink); }
+.nav-links a:hover::after { transform: scaleX(1); }
+.nav-links a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+
+/* ============================================================
+   侧边进度条 — 全局固定层，左侧垂直居中
+   ============================================================ */
+#progress-bar {
+  position: fixed;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 0;
+}
+
+/* 圆点：8px 默认，12px 激活，hover 10px */
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(28,18,8,0.18);
+  transition: background .3s, transform .3s;
+  cursor: pointer;
+  /* 用伪元素撑开点击热区到 32px */
+  position: relative;
+}
+.progress-dot::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 32px; height: 32px;
+  z-index: 1;
+}
+.progress-dot:hover {
+  background: rgba(192,123,26,0.5);
+  transform: scale(1.25);
+}
+.progress-dot.active {
+  background: var(--gold);
+  transform: scale(1.5);
+}
+
+/* 移动端隐藏进度条 */
+@media (max-width: 768px) {
+  #progress-bar { display: none; }
+}
+
+/* ============================================================
+   HERO — 第一屏
+   ============================================================ */
+#hero {
+  position: relative; z-index: 2;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+}
+.hero-left {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 9rem 3.5rem 5rem 3rem;
+  position: relative; z-index: 2;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.65rem; font-weight: 400;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 2rem;
+  display: flex; align-items: center; gap: 0.8rem;
+}
+.eyebrow::before {
+  content: ''; display: block;
+  width: 28px; height: 0.5px; background: var(--gold);
+}
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(3.8rem, 7vw, 6.5rem);
+  font-weight: 300;
+  line-height: 0.95;
+  color: var(--rust);
+  margin-bottom: 2rem;
+  letter-spacing: -0.01em;
+}
+h1 strong {
+  font-weight: 700;
+  font-style: italic;
+  color: var(--gold);
+  display: block;
+}
+h1 span { display: block; }
+.hero-sub {
+  font-size: 0.92rem; font-weight: 300;
+  line-height: 1.85;
+  color: rgba(28,18,8,0.55);
+  max-width: 340px;
+  margin-bottom: 3rem;
+}
+.hero-actions { display: flex; align-items: center; gap: 1.2rem; }
+.btn {
+  font-family: var(--mono);
+  font-size: 0.68rem; font-weight: 400;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 0.85rem 1.8rem;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all .25s ease;
+  display: inline-flex; align-items: center; gap: 0.5rem;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.btn-fill {
+  background: var(--rust); color: var(--cream);
+  border: 1.5px solid var(--rust);
+}
+.btn-fill:hover { background: var(--gold); border-color: var(--gold); transform: translateY(-2px); }
+.btn-outline {
+  background: transparent; color: var(--rust);
+  border: 1.5px solid rgba(28,18,8,0.2);
+}
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+/* 产品链接 */
+.prod-link {
+  font-family: var(--mono); font-size: 0.62rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(28,18,8,0.4);
+  display: flex; align-items: center; gap: 0.4rem;
+  transition: color .2s, gap .2s;
+  cursor: pointer;
+}
+.prod-link:hover { color: var(--gold); gap: 0.75rem; }
+.prod-link:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.hero-meta {
+  margin-top: 4.5rem;
+  display: flex; gap: 3rem;
+  padding-top: 2rem;
+  border-top: 0.5px solid var(--border);
+}
+.meta-num {
+  font-family: var(--serif);
+  font-size: 2.2rem; font-weight: 600;
+  color: var(--rust); line-height: 1;
+}
+.meta-label {
+  font-family: var(--mono);
+  font-size: 0.58rem; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(28,18,8,0.4);
+  margin-top: 0.3rem;
+}
+
+.hero-right {
+  position: relative;
+  background: var(--parchment);
+  overflow: hidden;
+}
+/* 视频/图片容器 — Cursor 替换为实际 video 标签 */
+.hero-media {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  animation: heroBreath 7s ease-in-out infinite;
+  transform-origin: center center;
+}
+.hero-media video,
+.hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-media::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 62% 28%, rgba(255,255,255,0.18), transparent 46%),
+              linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
+  mix-blend-mode: soft-light;
+}
+@keyframes heroBreath {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.026); }
+}
+.hero-media-placeholder {
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, #EDD9A3 0%, #C8861A 55%, #7A3A0A 100%);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 0.8rem;
+}
+/* CURSOR TASK: 替换 hero-media-placeholder 为 <video autoplay muted loop playsinline src="hero.mp4"> */
+.placeholder-label {
+  font-family: var(--mono);
+  font-size: 0.6rem; letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  text-align: center; line-height: 1.8;
+}
+.hero-badge {
+  position: absolute;
+  background: rgba(250,246,238,0.92);
+  backdrop-filter: blur(8px);
+  border: 0.5px solid rgba(255,255,255,0.5);
+  border-radius: 12px;
+  padding: 0.8rem 1.1rem;
+  animation: float 5s ease-in-out infinite;
+}
+.hero-badge.b1 { top: 18%; left: 6%; animation-delay: 0s; }
+.hero-badge.b2 { bottom: 22%; right: 8%; animation-delay: 2s; }
+@keyframes float {
+  0%,100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
+}
+.badge-top {
+  font-family: var(--mono); font-size: 0.55rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(28,18,8,0.4); margin-bottom: 0.2rem;
+}
+.badge-val {
+  font-family: var(--serif); font-size: 1.1rem; font-weight: 600;
+  color: var(--rust);
+}
+.badge-dot {
+  display: inline-block; width: 5px; height: 5px;
+  border-radius: 50%; background: #4CAF50;
+  margin-right: 4px; vertical-align: middle;
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* scroll hint */
+.scroll-hint {
+  position: absolute; bottom: 2.5rem; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(28,18,8,0.3);
+  animation: fadeUpDown 2.5s ease-in-out infinite;
+}
+@keyframes fadeUpDown {
+  0%,100%{opacity:0.4; transform:translateX(-50%) translateY(0);}
+  50%{opacity:0.9; transform:translateX(-50%) translateY(-4px);}
+}
+.scroll-arrow {
+  width: 1px; height: 30px;
+  background: linear-gradient(to bottom, var(--gold), transparent);
+  margin: 0 auto;
+}
+
+/* ============================================================
+   MARQUEE
+   ============================================================ */
+.marquee-wrap {
+  position: relative; z-index: 2;
+  overflow: hidden;
+  background: var(--rust);
+  padding: 0.7rem 0;
+  border-top: 0.5px solid rgba(255,255,255,0.06);
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+}
+.marquee-track {
+  display: inline-flex; gap: 0;
+  animation: marquee 25s linear infinite;
+  white-space: nowrap;
+}
+.marquee-item {
+  display: inline-flex; align-items: center; gap: 2rem;
+  padding: 0 2rem;
+  font-family: var(--mono);
+  font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(250,246,238,0.45);
+}
+.marquee-item strong { color: var(--gold-lt); font-weight: 400; }
+.marquee-sep {
+  display: inline-block;
+  width: 3px; height: 3px; border-radius: 50%;
+  background: rgba(250,246,238,0.2);
+  margin: 0 1rem;
+  vertical-align: middle;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* ============================================================
+   NARRATIVE PIN — 滚动叙事过渡段（Journey → Products）
+   ============================================================ */
+#narrative-pin {
+  position: relative;
+  height: 300vh;
+  pointer-events: none;
+}
+.narrative-inner {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--ink);
+}
+.narrative-bg {
+  position: absolute; inset: 0;
+  opacity: 0.12;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 40px,
+    rgba(192,123,26,0.3) 40px,
+    rgba(192,123,26,0.3) 41px
+  );
+}
+.narrative-card {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 3rem;
+  max-width: 680px;
+}
+.narrative-kv {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity .6s, transform .6s;
+}
+.narrative-headline {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--cream);
+  margin-bottom: 1.5rem;
+}
+.narrative-headline em {
+  color: var(--gold);
+  font-style: normal;
+}
+.narrative-sub {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: rgba(250,246,238,0.55);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity .6s .1s, transform .6s .1s;
+}
+.narrative-line {
+  width: 40px;
+  height: 1.5px;
+  background: var(--gold);
+  margin: 2rem auto 0;
+  opacity: 0;
+  transition: opacity .6s .2s;
+}
+.narrative-card.in .narrative-kv,
+.narrative-card.in .narrative-sub,
+.narrative-card.in .narrative-line {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================================
+   B2 CORE — 滚动叙事：生面团 → 发酵 → 烘焙 → 成品
+   这是整个网页的叙事核心
+   ============================================================ */
+#journey-section {
+  position: relative;
+  height: 400vh;  /* 总滚动高度 */
+  z-index: 2;
+}
+
+#journey {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: var(--ink);
+  overflow: hidden;
+}
+
+.journey-sticky-wrap {
+  height: 100vh;
+  display: grid; grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+}
+
+/* 左侧：文字叙事 */
+.journey-text {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 4rem 3rem 4rem 3rem;
+  position: relative;
+}
+.journey-step {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 4rem 3rem;
+  opacity: 0;
+  transform: translateY(18px);
+  filter: blur(1.5px);
+  transition: opacity .48s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform .48s cubic-bezier(0.4, 0, 0.2, 1), 
+              filter .48s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+.journey-step.active {
+  opacity: 1; transform: translateY(0);
+  filter: blur(0);
+  pointer-events: auto;
+}
+.step-num {
+  font-family: var(--mono); font-size: 0.6rem;
+  letter-spacing: 0.2em; color: var(--gold);
+  margin-bottom: 1.2rem;
+  display: flex; align-items: center; gap: 0.8rem;
+}
+.step-num::before {
+  content: ''; display: block;
+  width: 20px; height: 0.5px; background: var(--gold);
+}
+.step-title {
+  font-family: var(--serif);
+  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-weight: 300; line-height: 1.05;
+  color: var(--cream);
+  margin-bottom: 1.5rem;
+}
+.step-title em { font-style: italic; color: var(--gold); }
+.step-body {
+  font-size: 0.9rem; font-weight: 300;
+  line-height: 1.9; color: rgba(250,246,238,0.5);
+  max-width: 360px;
+}
+.step-data {
+  margin-top: 2.5rem;
+  display: flex; gap: 2rem;
+}
+.step-stat-num {
+  font-family: var(--serif);
+  font-size: 2rem; font-weight: 600;
+  color: var(--gold); line-height: 1;
+}
+.step-stat-label {
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(250,246,238,0.3); margin-top: 0.3rem;
+}
+
+/* 右侧：图片区 */
+.journey-visual {
+  position: relative; overflow: hidden;
+  background: #140D04;
+}
+#journey-particles {
+  position: absolute; inset: 0; z-index: 1;
+  pointer-events: none;
+}
+.journey-img {
+  position: absolute; inset: 0;
+  opacity: 0;
+  transform: scale(1.03);
+  filter: blur(2px) saturate(0.85);
+  transition: opacity .62s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform .62s cubic-bezier(0.4, 0, 0.2, 1), 
+              filter .62s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2;
+}
+.journey-img.active {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0) saturate(1);
+}
+
+/* 四个状态的背景色（Cursor 替换为实际图片） */
+.j-img-1 { background: radial-gradient(ellipse at 50% 60%, #5C3A1A 0%, #2A1A08 100%); }
+.j-img-2 { background: radial-gradient(ellipse at 50% 60%, #7A4E1E 0%, #2A1A08 100%); }
+.j-img-3 { background: radial-gradient(ellipse at 50% 60%, #A06020 0%, #3A1A08 100%); }
+.j-img-4 { background: radial-gradient(ellipse at 50% 60%, #C8861A 0%, #5C2A08 100%); }
+
+/* CURSOR TASK: 把每个 .journey-img 内的 placeholder 替换为
+   <img src="stage-1-dough.jpg"> ~ <img src="stage-4-finished.jpg">
+   四张图须同角度同光线 */
+
+.img-placeholder {
+  text-align: center;
+  font-family: var(--mono); font-size: 0.6rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(250,246,238,0.2);
+  line-height: 2;
+}
+.img-placeholder-icon {
+  font-size: 4rem; margin-bottom: 1rem;
+  filter: grayscale(0.5) opacity(0.4);
+}
+
+/* 进度指示器（右侧底部） */
+.journey-progress {
+  position: absolute; bottom: 2.5rem; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 0.6rem;
+}
+.jp-dot {
+  width: 20px; height: 2px; border-radius: 1px;
+  background: rgba(250,246,238,0.2);
+  transition: background .28s cubic-bezier(0.4, 0, 0.2, 1), 
+              width .28s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform .28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.jp-dot.active {
+  background: var(--gold); width: 36px;
+}
+
+/* 步骤标签（左侧底部） */
+.journey-steps-nav {
+  position: absolute; bottom: 2.5rem; left: 3rem;
+  display: flex; gap: 1.5rem;
+}
+.jsn-item {
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(250,246,238,0.2);
+  cursor: none;
+  padding-bottom: 0.3rem;
+  border-bottom: 0.5px solid transparent;
+  transition: color .28s cubic-bezier(0.4, 0, 0.2, 1), 
+              border-color .28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.jsn-item.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+/* ============================================================
+   INGREDIENTS — 原料展示（hover 弹性缩放）
+   ============================================================ */
+#ingredients {
+  position: relative; z-index: 2;
+  padding: 8rem 3rem;
+  background: var(--cream);
+}
+#ingredients::before {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: 0.08;
+  background: radial-gradient(circle at 15% 20%, rgba(192,123,26,0.14), transparent 30%),
+              radial-gradient(circle at 83% 75%, rgba(122,58,10,0.10), transparent 32%);
+}
+.section-header {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 4rem; align-items: end;
+  margin-bottom: 5rem;
+}
+h2 {
+  font-family: var(--serif);
+  font-size: clamp(2.2rem, 4.5vw, 3.8rem);
+  font-weight: 300; line-height: 1.1;
+  color: var(--rust);
+}
+h2 em { font-style: italic; font-weight: 600; color: var(--gold); }
+.section-desc {
+  font-size: 0.9rem; font-weight: 300;
+  line-height: 1.85; color: rgba(28,18,8,0.5);
+}
+.ingredients-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+.ing-card {
+  background: var(--parchment);
+  border-radius: 18px;
+  padding: 2.2rem 1.8rem;
+  border: 0.5px solid var(--border);
+  cursor: none;
+  /* GPU-composited only — 不触发 layout reflow */
+  will-change: transform;
+  transition: transform .42s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow .35s ease, border-color .35s ease;
+  position: relative; overflow: hidden;
+}
+.ing-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-lt));
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ing-card:hover {
+  transform: scale(1.036) translateY(-5px);
+  border-color: rgba(192,123,26,0.3);
+  box-shadow: 0 16px 34px rgba(28,18,8,0.08);
+}
+.ing-card:hover::before { transform: scaleX(1); }
+
+/* CURSOR TASK: 把 .ing-emoji 替换为实际微距图片
+   建议：圆形 clip-path，200x200px，白背景 */
+.ing-emoji {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(192,123,26,0.1);
+  border: 0.5px solid rgba(192,123,26,0.24);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; margin-bottom: 1.5rem;
+  transition: transform .42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ing-card:hover .ing-emoji { transform: scale(1.1) rotate(-3deg); }
+.ing-name {
+  font-family: var(--serif);
+  font-size: 1.3rem; font-weight: 600;
+  color: var(--rust); margin-bottom: 0.5rem;
+}
+.ing-desc {
+  font-size: 0.78rem; font-weight: 300;
+  line-height: 1.7; color: rgba(28,18,8,0.5);
+  margin-bottom: 1.2rem;
+}
+.ing-tag {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gold);
+}
+.ing-tag::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: #4CAF50;
+}
+
+/* ============================================================
+   FACTORY — 工厂可视化 (Three.js 占位)
+   ============================================================ */
+#factory {
+  position: relative; z-index: 2;
+  background: var(--ink);
+  padding: 8rem 3rem;
+  overflow: hidden;
+}
+.factory-header {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-bottom: 4rem;
+}
+.factory-header h2 { color: var(--cream); }
+.factory-mono {
+  font-family: var(--mono); font-size: 0.62rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(250,246,238,0.3);
+  line-height: 1.8;
+  text-align: right;
+}
+
+/* ---- 火候控制：长按进度条 ---- */
+.factory-hold-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 80px;
+  height: 4px;
+  background: rgba(250,246,238,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  z-index: 10;
+}
+.factory-hold-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-lt));
+  border-radius: 2px;
+  transition: width 0.05s linear;
+}
+.factory-hold-label {
+  position: absolute;
+  top: 20px;
+  right: 12px;
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  z-index: 10;
+  transition: opacity 0.3s;
+  opacity: 0;
+  text-align: right;
+  line-height: 1.6;
+  pointer-events: none;
+}
+.factory-hold-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(250,246,238,0.2);
+  z-index: 10;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity 0.4s;
+}
+/* 舞台中央火候文案 */
+.factory-stage-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  font-family: var(--serif);
+  font-size: 2.8rem;
+  font-weight: 300;
+  color: #E8A93A;
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 2px 30px rgba(192,123,26,0.6);
+  transition: opacity 0.3s ease, transform 0.2s ease, color 0.3s ease;
+  z-index: 5;
+  letter-spacing: 0.15em;
+  line-height: 1.2;
+}
+
+#factory-canvas-wrap {
+  width: 100%; height: 420px;
+  border-radius: 16px;
+  border: 0.5px solid rgba(250,246,238,0.08);
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  background: #0E0904;
+  touch-action: none; /* 允许长按不被浏览器拦截 */
+}
+
+/* Factory data chips */
+.factory-chips {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1rem; margin-top: 2rem;
+}
+.f-chip {
+  background: rgba(250,246,238,0.04);
+  border: 0.5px solid rgba(250,246,238,0.08);
+  border-radius: 12px; padding: 1.2rem;
+  transition: background .25s, border-color .25s, transform .25s;
+}
+.f-chip:hover {
+  background: rgba(192,123,26,0.08);
+  border-color: rgba(232,169,58,0.35);
+  transform: translateY(-2px);
+}
+/* 演示模式激活状态 */
+.f-chip.is-active {
+  border-color: rgba(232,169,58,0.75) !important;
+  box-shadow: 0 0 24px rgba(192,123,26,0.4), inset 0 0 16px rgba(192,123,26,0.12);
+  background: rgba(192,123,26,0.18) !important;
+}
+.f-chip-num {
+  font-family: var(--serif);
+  font-size: 1.8rem; font-weight: 600;
+  color: var(--gold); line-height: 1;
+}
+.f-chip-label {
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(250,246,238,0.3); margin-top: 0.4rem;
+}
+.f-chip-status {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  margin-top: 0.55rem;
+  font-family: var(--mono); font-size: 0.54rem;
+  color: rgba(250,246,238,0.46);
+  letter-spacing: 0.09em; text-transform: uppercase;
+}
+.f-chip-status::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--health);
+  box-shadow: 0 0 0 0 rgba(93,142,98,0.42);
+  animation: pulseDot 2s ease-out infinite;
+}
+@keyframes pulseDot {
+  0% { box-shadow: 0 0 0 0 rgba(93,142,98,0.42); }
+  80% { box-shadow: 0 0 0 8px rgba(93,142,98,0); }
+  100% { box-shadow: 0 0 0 0 rgba(93,142,98,0); }
+}
+
+/* ============================================================
+   PRODUCTS — 产品展示
+   ============================================================ */
+#products {
+  position: relative; z-index: 2;
+  padding: 8rem 3rem;
+  background: var(--parchment);
+}
+#products::before {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: 0.055;
+  background: radial-gradient(circle at 75% 15%, rgba(232,169,58,0.22), transparent 30%),
+              radial-gradient(circle at 22% 78%, rgba(122,58,10,0.14), transparent 32%);
+}
+.products-header {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-bottom: 4rem;
+}
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.8rem;
+}
+.prod-card {
+  background: var(--cream);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 0.5px solid var(--border);
+  cursor: none;
+  will-change: transform;
+  transition: transform .42s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow .38s ease, border-color .32s ease;
+}
+.prod-card:hover {
+  transform: translateY(-8px) scale(1.012);
+  border-color: rgba(192,123,26,0.32);
+  box-shadow: 0 28px 52px rgba(28,18,8,0.12);
+}
+.prod-card:hover .prod-img img {
+  transform: scale(1.05);
+}
+.prod-img {
+  height: 200px; position: relative; overflow: hidden;
+}
+.prod-img img {
+  transition: transform .5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.prod-body { padding: 1.5rem; }
+.prod-tag {
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gold);
+  background: rgba(192,123,26,0.1);
+  border-radius: 100px; padding: 0.2rem 0.7rem;
+  display: inline-block; margin-bottom: 0.75rem;
+}
+.prod-tag.health {
+  color: var(--health);
+  background: var(--health-bg);
+}
+.prod-name {
+  font-family: var(--serif);
+  font-size: 1.25rem; font-weight: 600;
+  color: var(--rust); margin-bottom: 0.4rem;
+}
+.prod-desc {
+  font-size: 0.78rem; font-weight: 300;
+  line-height: 1.7; color: rgba(28,18,8,0.5);
+  margin-bottom: 1.2rem;
+}
+.prod-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 0.5px solid var(--border);
+}
+.prod-link {
+  font-family: var(--mono); font-size: 0.62rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(28,18,8,0.4);
+  display: flex; align-items: center; gap: 0.4rem;
+  transition: color .2s, gap .2s;
+}
+.prod-link:hover { color: var(--gold); gap: 0.75rem; }
+.prod-badge {
+  font-family: var(--mono); font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: rgba(28,18,8,0.3);
+}
+.prod-badge.health {
+  color: var(--health);
+}
+.prod-card.featured-quinoa {
+  border-color: rgba(136,184,112,0.5);
+  box-shadow: 0 20px 42px rgba(93,142,98,0.2);
+  transform: translateY(0);
+  transition: transform .42s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow .38s ease, border-color .32s ease;
+}
+.prod-card.featured-quinoa:hover {
+  transform: translateY(-10px) scale(1.015);
+  border-color: rgba(136,184,112,0.7);
+  box-shadow: 0 32px 58px rgba(93,142,98,0.28);
+}
+.prod-card.featured-quinoa .prod-tag {
+  color: var(--health);
+  background: var(--health-bg);
+}
+.prod-card.featured-quinoa .prod-img::after {
+  content: 'Featured';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(93,142,98,0.9);
+  border-radius: 999px;
+  padding: 0.22rem 0.5rem;
+  backdrop-filter: blur(4px);
+}
+.prod-card.featured-quinoa .prod-img {
+  position: relative;
+}
+.prod-card.featured-quinoa .prod-img::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(135deg, rgba(93,142,98,0.08), transparent);
+  opacity: 0;
+  transition: opacity .38s ease;
+}
+.prod-card.featured-quinoa:hover .prod-img::before {
+  opacity: 1;
+}
+
+/* 便捷化快捷入口条（不改文案主叙事） */
+.quick-entry {
+  position: relative; z-index: 2;
+  padding: 1rem 3rem;
+  background: linear-gradient(90deg, rgba(250,246,238,0.94), rgba(242,234,216,0.96));
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+}
+.quick-entry-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem;
+}
+.quick-entry-label {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(28,18,8,0.45);
+}
+.quick-entry-actions {
+  display: flex; align-items: center; gap: 0.7rem;
+}
+.quick-chip {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 0.5px solid rgba(28,18,8,0.18);
+  border-radius: 100px;
+  padding: 0.42rem 0.82rem;
+  color: rgba(28,18,8,0.62);
+  transition: all .22s ease;
+}
+.quick-chip:hover {
+  border-color: rgba(192,123,26,0.5);
+  color: var(--gold);
+  transform: translateY(-1px);
+}
+
+#story {
+  position: relative; z-index: 2;
+  padding: 8rem 3rem;
+  background: var(--cream);
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 6rem; align-items: start;
+  max-width: 1200px; margin: 0 auto;
+}
+#story-section { background: var(--cream); }
+.timeline { margin-top: 3rem; }
+.tl-item {
+  display: grid; grid-template-columns: 72px 1fr;
+  gap: 1.5rem; padding-bottom: 3rem;
+  position: relative;
+}
+.tl-item:not(:last-child)::before {
+  content: '';
+  position: absolute; left: 35px; top: 20px; bottom: 0;
+  width: 0.5px;
+  background: linear-gradient(to bottom, var(--gold) 0%, transparent 100%);
+}
+.tl-year {
+  font-family: var(--serif);
+  font-size: 1rem; font-weight: 600;
+  color: var(--gold); text-align: right;
+  padding-top: 1px; line-height: 1.2;
+}
+.tl-dot {
+  position: absolute; left: 29px; top: 3px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--gold);
+  border: 3px solid var(--cream);
+  box-shadow: 0 0 0 1px var(--gold);
+}
+.tl-title {
+  font-size: 0.9rem; font-weight: 500;
+  color: var(--rust); margin-bottom: 0.35rem;
+}
+.tl-body {
+  font-size: 0.8rem; font-weight: 300;
+  line-height: 1.75; color: rgba(28,18,8,0.5);
+}
+.story-right { padding-top: 6rem; }
+.story-quote {
+  font-family: var(--serif);
+  font-size: 1.8rem; font-weight: 300; font-style: italic;
+  line-height: 1.5; color: var(--rust);
+  margin-bottom: 1.5rem;
+  padding-left: 2rem;
+  border-left: 2px solid var(--gold);
+}
+.story-body {
+  font-size: 0.88rem; font-weight: 300;
+  line-height: 1.9; color: rgba(28,18,8,0.5);
+  margin-bottom: 2.5rem;
+}
+
+/* ============================================================
+   Story FX - 微反馈层
+   ============================================================ */
+
+/* 轻网格纹理背景 */
+#story-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(192,123,26,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(192,123,26,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+
+/* 引言竖线高光层 */
+.story-quote-fx {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(to bottom, var(--gold), rgba(192,123,26,0.1));
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+/* Story 左右区域视差容器 */
+.story-fx-wrap {
+  position: relative;
+  will-change: transform;
+  transition: transform 0.1s ease-out;
+}
+
+/* ============================================================
+   CTA
+   ============================================================ */
+#cta {
+  position: relative; z-index: 2;
+  background: var(--rust);
+  padding: 9rem 3rem;
+  text-align: center;
+  overflow: hidden;
+}
+#cta::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent, transparent 30px,
+    rgba(255,255,255,0.015) 30px, rgba(255,255,255,0.015) 31px
+  );
+}
+.cta-inner { position: relative; z-index: 1; max-width: 680px; margin: 0 auto; }
+.cta-mono {
+  font-family: var(--mono); font-size: 0.65rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(250,246,238,0.45); margin-bottom: 2rem;
+}
+.cta-title {
+  font-family: var(--serif);
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 300; line-height: 1.05;
+  color: var(--cream); margin-bottom: 1.5rem;
+}
+.cta-title em { font-style: italic; color: var(--gold-lt); font-weight: 600; }
+.cta-sub {
+  font-size: 0.9rem; font-weight: 300;
+  line-height: 1.85; color: rgba(250,246,238,0.5);
+  margin-bottom: 3rem;
+}
+.cta-buttons { display: flex; gap: 1.2rem; justify-content: center; }
+.btn-cta {
+  font-family: var(--mono); font-size: 0.68rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 1rem 2.4rem; border-radius: 100px;
+  cursor: none;
+  transition: all .25s ease;
+}
+.btn-cta.primary {
+  background: var(--cream); color: var(--rust);
+  border: 1.5px solid var(--cream);
+}
+.btn-cta.primary:hover { background: var(--gold-lt); border-color: var(--gold-lt); }
+.btn-cta.ghost {
+  background: transparent; color: var(--cream);
+  border: 1.5px solid rgba(250,246,238,0.3);
+}
+.btn-cta.ghost:hover { border-color: var(--gold-lt); color: var(--gold-lt); }
+
+/* CTA 热场液化层 */
+#cta-heat-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+#cta-heat-canvas.active {
+  opacity: 1;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+footer {
+  position: relative; z-index: 2;
+  background: var(--ink);
+  padding: 5rem 3rem 2.5rem;
+}
+.footer-grid {
+  display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 4rem; margin-bottom: 4rem;
+  padding-bottom: 3rem;
+  border-bottom: 0.5px solid rgba(250,246,238,0.08);
+}
+.footer-logo {
+  font-family: var(--serif);
+  font-size: 1.6rem; font-weight: 600;
+  color: var(--cream); margin-bottom: 1rem;
+}
+.footer-logo em { color: var(--gold); font-style: normal; }
+.footer-tagline {
+  font-size: 0.8rem; font-weight: 300;
+  color: rgba(250,246,238,0.35);
+  line-height: 1.8; max-width: 220px;
+}
+.footer-col h4 {
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(250,246,238,0.3); margin-bottom: 1.5rem;
+  transition: opacity .25s ease;
+}
+.footer-bottom {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 1rem;
+}
+.footer-legal {
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.08em; color: rgba(250,246,238,0.2);
+}
+.footer-icp {
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.06em; color: rgba(250,246,238,0.2);
+}
+.footer-icp a {
+  color: rgba(250,246,238,0.3);
+  transition: color .2s;
+}
+.footer-icp a:hover { color: var(--gold); }
+.footer-version {
+  font-family: var(--mono); font-size: 0.58rem;
+  letter-spacing: 0.06em; color: rgba(250,246,238,0.15);
+}
+.footer-contact {
+  display: flex; flex-direction: column; gap: 0.5rem;
+  margin-top: 1.5rem; margin-bottom: 1rem;
+}
+.footer-tel, .footer-email {
+  font-size: 0.78rem; color: rgba(250,246,238,0.45);
+  transition: color .2s;
+}
+.footer-tel:hover, .footer-email:hover { color: var(--gold); }
+.footer-address {
+  font-size: 0.75rem; color: rgba(250,246,238,0.35);
+  margin-bottom: 1.5rem;
+}
+.footer-social {
+  display: flex; align-items: center; gap: 0.8rem;
+}
+.social-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: rgba(250,246,238,0.06);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(250,246,238,0.4);
+  transition: background .22s, color .22s;
+}
+.social-icon:hover {
+  background: rgba(192,123,26,0.2);
+  color: var(--gold);
+}
+.social-qr {
+  position: relative;
+}
+.qr-placeholder {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: rgba(250,246,238,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* ============================================================
+   FOOTER GRID INTERACTION
+   ============================================================ */
+.footer-grid-wrap {
+  position: relative;
+}
+
+/* 虚拟网格背景 */
+.footer-grid-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: 
+    linear-gradient(rgba(250,246,238,0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(250,246,238,0.15) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+}
+
+/* Footer列hover聚焦效果 */
+.footer-col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.footer-col ul a {
+  font-size: 0.82rem;
+  font-weight: 300;
+  color: rgba(250,246,238,0.5);
+  transition: color .22s ease-out, opacity .22s ease-out, transform .22s ease-out;
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+}
+
+/* 梯度聚焦效果（同列内） */
+.footer-col ul a:hover,
+.footer-col ul a:focus-visible {
+  color: rgba(250,246,238,1);
+  transform: scale(1.1);
+  opacity: 1;
+}
+.footer-col ul li:nth-child(1):has(a:hover) ~ li a,
+.footer-col ul li:nth-child(1):has(a:focus-visible) ~ li a {
+  opacity: 0.7;
+}
+.footer-col ul li:nth-child(1):has(a:hover) ~ li:nth-child(2) ~ li a,
+.footer-col ul li:nth-child(1):has(a:focus-visible) ~ li:nth-child(2) ~ li a {
+  opacity: 0.45;
+}
+.footer-col ul li:nth-child(1):has(a:hover) ~ li:nth-child(3) ~ li a,
+.footer-col ul li:nth-child(1):has(a:focus-visible) ~ li:nth-child(3) ~ li a {
+  opacity: 0.25;
+}
+/* 前向兄弟淡化 */
+.footer-col ul li:has(a:hover) ~ li a,
+.footer-col ul li:has(a:focus-visible) ~ li a {
+  opacity: 0.7;
+}
+.footer-col ul li:has(a:hover) ~ li:nth-child(2) ~ li a,
+.footer-col ul li:has(a:focus-visible) ~ li:nth-child(2) ~ li a {
+  opacity: 0.45;
+}
+.footer-col ul li:has(a:hover) ~ li:nth-child(3) ~ li a,
+.footer-col ul li:has(a:focus-visible) ~ li:nth-child(3) ~ li a {
+  opacity: 0.25;
+}
+
+/* 聚焦时轻微上浮 */
+.footer-col ul a:hover,
+.footer-col ul a:focus-visible {
+  transform: scale(1.1) translateX(3px);
+  outline: none;
+}
+
+/* ============================================================
+   REVEAL ANIMATIONS
+   ============================================================ */
+.reveal {
+  opacity: 0; transform: translateY(28px);
+  transition: opacity .75s ease, transform .75s ease;
+}
+.reveal.in { opacity: 1; transform: translateY(0); }
+.reveal-d1 { transition-delay: .1s; }
+.reveal-d2 { transition-delay: .2s; }
+.reveal-d3 { transition-delay: .3s; }
+.reveal-d4 { transition-delay: .4s; }
+
+/* 焦点样式 - 可访问性增强 */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* 确保非链接可交互元素的键盘可访问性 */
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ============================================================
+   REDUCED MOTION — 尊重用户无障碍偏好
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .hero-media,
+  .hero-badge,
+  .scroll-hint,
+  .marquee-track,
+  .badge-dot,
+  .pulseDot {
+    animation: none !important;
+  }
+}
+
+/* 移动端隐藏 Three.js canvas */
+@media (max-width: 768px) {
+  #factory-canvas { display: none; }
+  #journey-particles { display: none; }
+  /* 移动端禁用Footer网格聚焦效果 */
+  .footer-col:hover ul a:not(:hover) {
+    opacity: 1;
+  }
+  .footer-grid-wrap:has(.footer-col:hover) .footer-col:not(:hover) h4,
+  .footer-grid-wrap:has(.footer-col:hover) .footer-col:not(:hover) ul a {
+    opacity: 1;
+  }
+}
+@media (max-width: 900px) {
+  nav { padding: 1rem 1.5rem; }
+  .nav-links { display: none; }
+  #hero { grid-template-columns: 1fr; }
+  .hero-right { height: 55vw; }
+  .hero-left { padding: 7rem 1.5rem 3rem; }
+  .hero-actions { flex-wrap: wrap; }
+  #ingredients { padding: 5rem 1.5rem; }
+  .section-header { grid-template-columns: 1fr; gap: 1.5rem; }
+  .ingredients-grid { grid-template-columns: 1fr 1fr; }
+  #factory { padding: 5rem 1.5rem; }
+  .factory-chips { grid-template-columns: 1fr 1fr; }
+  #products { padding: 5rem 1.5rem; }
+  .products-grid { grid-template-columns: 1fr; }
+  .products-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+  .quick-entry { padding: 0.9rem 1rem; }
+  .quick-entry-inner { flex-direction: column; align-items: flex-start; }
+  .quick-entry-actions { flex-wrap: wrap; }
+  #story { grid-template-columns: 1fr; padding: 5rem 1.5rem; }
+  .story-right { padding-top: 0; }
+  .journey-sticky-wrap { grid-template-columns: 1fr; }
+  .journey-visual { display: none; }
+  #progress-bar { display: none; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  #cta { padding: 6rem 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- 霓虹跟随光标 -->
+<div class="cursor-follower cursor-main"></div>
+<div class="cursor-follower cursor-outline"></div>
+<div class="cursor-follower cursor-glow"></div>
+
+<!-- 鼠标跟随光晕 -->
+<div id="mouse-light"></div>
+
+<!-- 侧边进度条 — 全局固定层，无文字标签 -->
+<div id="progress-bar" aria-label="页面章节导航">
+  <div class="progress-dot active" data-section="hero" title="Hero"></div>
+  <div class="progress-dot" data-section="journey-section" title="Journey"></div>
+  <div class="progress-dot" data-section="ingredients" title="Ingredients"></div>
+  <div class="progress-dot" data-section="factory" title="Factory"></div>
+  <div class="progress-dot" data-section="products" title="Products"></div>
+  <div class="progress-dot" data-section="story" title="Story"></div>
+</div>
+
+<!-- NAV -->
+<nav id="nav">
+  <a class="logo" href="#hero">HAOSHI<em>.</em></a>
+  <ul class="nav-links">
+    <li><a href="#journey-section">Journey</a></li>
+    <li><a href="#ingredients">Ingredients</a></li>
+    <li><a href="#factory">Factory</a></li>
+    <li><a href="#products">Products</a></li>
+    <li><a href="#story">Story</a></li>
+  </ul>
+  <a href="#cta" class="btn btn-fill" style="padding: .6rem 1.4rem; font-size: .66rem;">Find a Store</a>
+</nav>
+
+<!-- ====== HERO ====== -->
+<section id="hero">
+  <div class="hero-left">
+    <div class="eyebrow">Since 1995 · Zhangzhou, Fujian</div>
+    <h1>
+      <span>Every</span>
+      <strong>Fresh</strong>
+      <span>Bread.</span>
+    </h1>
+    <p class="hero-sub">
+      从福建漳州工厂到你的早餐桌，
+      跟随面包的旅程——
+      原料、发酵、烘焙、成品。
+    </p>
+    <div class="hero-actions">
+      <a href="#journey-section" class="btn btn-fill">开始旅程 ↓</a>
+      <a href="#products" class="btn btn-outline">探索产品</a>
+    </div>
+    <div class="hero-meta">
+      <div class="meta-item">
+        <div class="meta-num">30<sup style="font-size:1rem">+</sup></div>
+        <div class="meta-label">Years Baking</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-num">4</div>
+        <div class="meta-label">Core Ingredients</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-num">0</div>
+        <div class="meta-label">Artificial Colors</div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-media">
+      <!-- Hero 视频：onerror 时显示 inline SVG 兜底 -->
+      <video
+        id="hero-video"
+        class="hero-video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        poster="assets/hero/hs_hero_toast_closeup_still_ai_v01.jpg"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+      >
+        <source src="assets/hero/hs_hero_toast_steam_loop_ai_v01.mp4" type="video/mp4">
+      </video>
+      <!-- Inline SVG 兜底：视频/图片均不可用时显示 -->
+      <div class="hero-fallback" style="display:none;position:absolute;inset:0;background:linear-gradient(135deg,#EDD9A3 0%,#C8861A 55%,#7A3A0A 100%);align-items:center;justify-content:center;flex-direction:column;gap:0.8rem;">
+        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.3;">
+          <rect x="15" y="35" width="70" height="45" rx="4" fill="rgba(250,246,238,0.15)" stroke="rgba(250,246,238,0.4)" stroke-width="1.5"/>
+          <path d="M20 35 Q50 20 80 35" stroke="rgba(250,246,238,0.4)" stroke-width="1.5" fill="none"/>
+          <ellipse cx="35" cy="50" rx="8" ry="6" fill="rgba(250,246,238,0.1)"/>
+          <ellipse cx="55" cy="52" rx="6" ry="5" fill="rgba(250,246,238,0.08)"/>
+        </svg>
+        <span style="font-family:var(--mono);font-size:0.6rem;letter-spacing:0.14em;color:rgba(255,255,255,0.4);text-transform:uppercase;">豪士 HAOSHI</span>
+      </div>
+    </div>
+    <div class="hero-badge b1">
+      <div class="badge-top">Status</div>
+      <div class="badge-val"><span class="badge-dot"></span>Freshly Baked</div>
+    </div>
+    <div class="hero-badge b2">
+      <div class="badge-top">Bake Temp</div>
+      <div class="badge-val">220°C</div>
+    </div>
+  </div>
+</section>
+
+<!-- SCROLL HINT -->
+<div style="position:relative;z-index:2;background:var(--cream);display:flex;justify-content:center;padding:1.5rem 0 0;">
+  <div class="scroll-hint">
+    <div class="scroll-arrow"></div>
+    Scroll to Begin
+  </div>
+</div>
+
+<!-- MARQUEE -->
+<div class="marquee-wrap" aria-hidden="true">
+  <div class="marquee-track">
+    <span class="marquee-item">Everyday Fresh<span class="marquee-sep"></span><strong>每日新鲜</strong></span>
+    <span class="marquee-item">Real Ingredients<span class="marquee-sep"></span><strong>真实原料</strong></span>
+    <span class="marquee-item">Factory Quality<span class="marquee-sep"></span><strong>工厂品质</strong></span>
+    <span class="marquee-item">Since 1995<span class="marquee-sep"></span><strong>三十年传承</strong></span>
+    <span class="marquee-item">Freshly Baked<span class="marquee-sep"></span><strong>新鲜出炉</strong></span>
+    <span class="marquee-item">No Artificial Colors<span class="marquee-sep"></span><strong>零添加色素</strong></span>
+    <span class="marquee-item">Everyday Fresh<span class="marquee-sep"></span><strong>每日新鲜</strong></span>
+    <span class="marquee-item">Real Ingredients<span class="marquee-sep"></span><strong>真实原料</strong></span>
+    <span class="marquee-item">Factory Quality<span class="marquee-sep"></span><strong>工厂品质</strong></span>
+    <span class="marquee-item">Since 1995<span class="marquee-sep"></span><strong>三十年传承</strong></span>
+    <span class="marquee-item">Freshly Baked<span class="marquee-sep"></span><strong>新鲜出炉</strong></span>
+    <span class="marquee-item">No Artificial Colors<span class="marquee-sep"></span><strong>零添加色素</strong></span>
+  </div>
+</div>
+
+<!-- ====== B2 JOURNEY — 核心滚动叙事 ====== -->
+<section id="journey-section">
+  <div id="journey">
+    <div class="journey-sticky-wrap">
+
+      <!-- 左：文字 -->
+      <div class="journey-text" id="journey-text">
+
+        <!-- Step 1 -->
+        <div class="journey-step active" id="step-0">
+          <div class="step-num">01 / 04 &nbsp;·&nbsp; Raw Dough</div>
+          <h2 class="step-title">一切从<em>面团</em>开始</h2>
+          <p class="step-body">
+            高筋小麦粉、新鲜牛奶、鸡蛋、天然酵母——
+            四种原料在这里相遇。
+            揉制，混合，静待时间施展魔法。
+          </p>
+          <div class="step-data">
+            <div>
+              <div class="step-stat-num">4</div>
+              <div class="step-stat-label">核心原料</div>
+            </div>
+            <div>
+              <div class="step-stat-num">12°C</div>
+              <div class="step-stat-label">理想环境温度</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="journey-step" id="step-1">
+          <div class="step-num">02 / 04 &nbsp;·&nbsp; Fermentation</div>
+          <h2 class="step-title">发酵，<em>时间</em>的艺术</h2>
+          <p class="step-body">
+            酵母开始工作。面团在恒温恒湿的环境中
+            缓慢膨胀，产生数以千计的细小气泡——
+            这就是未来面包蓬松口感的来源。
+          </p>
+          <div class="step-data">
+            <div>
+              <div class="step-stat-num">45m</div>
+              <div class="step-stat-label">发酵时长</div>
+            </div>
+            <div>
+              <div class="step-stat-num">38°C</div>
+              <div class="step-stat-label">发酵温度</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="journey-step" id="step-2">
+          <div class="step-num">03 / 04 &nbsp;·&nbsp; Baking</div>
+          <h2 class="step-title">高温<em>烘焙</em>，<br>美拉德反应</h2>
+          <p class="step-body">
+            220°C 隧道烤炉，面包表面发生美拉德反应，
+            形成独特的焦糖色泽与香气。
+            这是工业精度与烘焙艺术的交汇点。
+          </p>
+          <div class="step-data">
+            <div>
+              <div class="step-stat-num">220°C</div>
+              <div class="step-stat-label">烘焙温度</div>
+            </div>
+            <div>
+              <div class="step-stat-num">18m</div>
+              <div class="step-stat-label">烘焙时长</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="journey-step" id="step-3">
+          <div class="step-num">04 / 04 &nbsp;·&nbsp; Ready</div>
+          <h2 class="step-title"><em>成品</em>，<br>今天的早餐</h2>
+          <p class="step-body">
+            金黄，松软，香气四溢。
+            从漳州工厂到你的早餐桌，
+            每一片豪士都是同一条生产线的诚意。
+          </p>
+          <div class="step-data">
+            <div>
+              <div class="step-stat-num">24h</div>
+              <div class="step-stat-label">保鲜时效</div>
+            </div>
+            <div>
+              <div class="step-stat-num">0</div>
+              <div class="step-stat-label">人工色素</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 步骤导航 -->
+        <div class="journey-steps-nav">
+          <span class="jsn-item active" data-step="0">面团</span>
+          <span class="jsn-item" data-step="1">发酵</span>
+          <span class="jsn-item" data-step="2">烘焙</span>
+          <span class="jsn-item" data-step="3">成品</span>
+        </div>
+      </div>
+
+      <!-- 右：图片 -->
+      <div class="journey-visual" id="journey-visual">
+        <canvas id="journey-particles"></canvas>
+
+        <div class="journey-img j-img-1 active" id="jimg-0">
+          <img src="assets/journey/stage-1-dough.jpg" alt="生面团" style="width:100%;height:100%;object-fit:cover;" loading="eager" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <svg style="display:none;position:absolute;width:100%;height:100%;" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="100" cy="120" rx="70" ry="50" fill="rgba(250,246,238,0.1)" stroke="rgba(250,246,238,0.2)" stroke-width="1"/>
+            <path d="M50 110 Q70 90 90 100 Q110 84 130 100 Q150 90 160 110" stroke="rgba(250,246,238,0.15)" stroke-width="1" fill="none"/>
+            <ellipse cx="70" cy="116" rx="10" ry="6" fill="rgba(250,246,238,0.08)"/>
+            <ellipse cx="110" cy="110" rx="8" ry="5" fill="rgba(250,246,238,0.06)"/>
+          </svg>
+        </div>
+
+        <div class="journey-img j-img-2" id="jimg-1">
+          <img src="assets/journey/stage-2-rising.jpg" alt="发酵膨胀" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <svg style="display:none;position:absolute;width:100%;height:100%;" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="100" cy="110" rx="60" ry="44" fill="rgba(250,246,238,0.1)" stroke="rgba(250,246,238,0.18)" stroke-width="1"/>
+            <ellipse cx="100" cy="104" rx="50" ry="36" fill="rgba(250,246,238,0.06)"/>
+            <circle cx="80" cy="100" r="6" fill="rgba(250,246,238,0.1)"/>
+            <circle cx="110" cy="96" r="4" fill="rgba(250,246,238,0.08)"/>
+            <circle cx="96" cy="112" r="5" fill="rgba(250,246,238,0.09)"/>
+            <circle cx="120" cy="104" r="3" fill="rgba(250,246,238,0.07)"/>
+          </svg>
+        </div>
+
+        <div class="journey-img j-img-3" id="jimg-2">
+          <img src="assets/journey/stage-3-baking.jpg" alt="烘焙中" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <svg style="display:none;position:absolute;width:100%;height:100%;" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="100" cy="116" rx="64" ry="46" fill="rgba(250,246,238,0.12)" stroke="rgba(250,246,238,0.2)" stroke-width="1.2"/>
+            <ellipse cx="100" cy="110" rx="56" ry="40" fill="rgba(200,134,26,0.08)" stroke="rgba(200,134,26,0.15)" stroke-width="0.8"/>
+            <path d="M70 100 L80 90 L100 96 L120 84 L130 100" stroke="rgba(250,246,238,0.15)" stroke-width="0.8" fill="none"/>
+            <path d="M60 110 Q100 100 140 110" stroke="rgba(250,246,238,0.1)" stroke-width="0.8" fill="none"/>
+            <circle cx="84" cy="104" r="3" fill="rgba(250,246,238,0.12)"/>
+            <circle cx="116" cy="100" r="2" fill="rgba(250,246,238,0.1)"/>
+          </svg>
+        </div>
+
+        <div class="journey-img j-img-4" id="jimg-3">
+          <img src="assets/journey/stage-4-done.jpg" alt="出炉成品" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <svg style="display:none;position:absolute;width:100%;height:100%;" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="30" y="80" width="140" height="70" rx="10" fill="rgba(250,246,238,0.12)" stroke="rgba(250,246,238,0.2)" stroke-width="1.2"/>
+            <rect x="40" y="70" width="120" height="20" rx="6" fill="rgba(250,246,238,0.08)" stroke="rgba(250,246,238,0.15)" stroke-width="0.8"/>
+            <path d="M50 100 Q70 94 90 100 Q110 106 130 100 Q150 94 170 100" stroke="rgba(250,246,238,0.12)" stroke-width="1" fill="none"/>
+            <path d="M50 120 Q70 114 90 120 Q110 126 130 120 Q150 114 170 120" stroke="rgba(250,246,238,0.1)" stroke-width="0.8" fill="none"/>
+          </svg>
+        </div>
+
+        <!-- 进度点 -->
+        <div class="journey-progress">
+          <div class="jp-dot active" data-step="0"></div>
+          <div class="jp-dot" data-step="1"></div>
+          <div class="jp-dot" data-step="2"></div>
+          <div class="jp-dot" data-step="3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== INGREDIENTS ====== -->
+<section id="ingredients">
+  <div class="section-header">
+    <div>
+      <div class="eyebrow reveal">Trust Layer</div>
+      <h2 class="reveal reveal-d1">看得见的<br><em>真实原料</em></h2>
+    </div>
+    <p class="section-desc reveal reveal-d2">
+      每一种原料都经过严格筛选。
+      微距镜头下呈现的不只是食材，
+      更是我们对品质的承诺——
+      你能看见，所以你能信赖。
+    </p>
+  </div>
+  <div class="ingredients-grid">
+    <div class="ing-card reveal">
+      <div class="ing-emoji">
+        <img src="assets/ingredient/wheat.jpg" alt="高筋小麦粉" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <svg style="display:none;width:40px;height:40px;" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="20" cy="25" rx="12" ry="10" stroke="rgba(192,123,26,0.5)" stroke-width="1.5" fill="rgba(192,123,26,0.08)"/>
+          <path d="M12 22 Q16 18 20 20 Q24 16 28 22" stroke="rgba(192,123,26,0.4)" stroke-width="1" fill="none"/>
+          <path d="M14 27 Q18 24 22 27" stroke="rgba(192,123,26,0.3)" stroke-width="0.8" fill="none"/>
+        </svg>
+      </div>
+      <div class="ing-name">高筋小麦粉</div>
+      <div class="ing-desc">蛋白质含量≥12%，赋予面包弹性拉丝的完美骨架结构，气孔均匀细腻。</div>
+      <div class="ing-tag">优选产区</div>
+    </div>
+    <div class="ing-card reveal reveal-d1">
+      <div class="ing-emoji">
+        <img src="assets/ingredient/milk.png" alt="新鲜全脂牛奶" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <svg style="display:none;width:40px;height:40px;" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="20" cy="22" rx="8" ry="12" stroke="rgba(192,123,26,0.5)" stroke-width="1.5" fill="rgba(192,123,26,0.08)"/>
+          <ellipse cx="20" cy="12" rx="4" ry="2" stroke="rgba(192,123,26,0.4)" stroke-width="1" fill="rgba(192,123,26,0.06)"/>
+        </svg>
+      </div>
+      <div class="ing-name">新鲜全脂牛奶</div>
+      <div class="ing-desc">天然乳脂赋予浓郁奶香，提升面包软糯口感，无还原奶。</div>
+      <div class="ing-tag">国内牧场直供</div>
+    </div>
+    <div class="ing-card reveal reveal-d2">
+      <div class="ing-emoji">
+        <img src="assets/ingredient/egg.jpg" alt="新鲜鸡蛋" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <svg style="display:none;width:40px;height:40px;" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="20" cy="22" rx="10" ry="12" stroke="rgba(192,123,26,0.5)" stroke-width="1.5" fill="rgba(192,123,26,0.08)"/>
+          <ellipse cx="20" cy="18" rx="6" ry="5" stroke="rgba(192,123,26,0.35)" stroke-width="1" fill="rgba(192,123,26,0.05)"/>
+          <circle cx="20" cy="18" r="2.5" fill="rgba(192,123,26,0.1)"/>
+        </svg>
+      </div>
+      <div class="ing-name">新鲜鸡蛋</div>
+      <div class="ing-desc">天然乳化剂，让面包组织细腻均匀，色泽金黄，无蛋粉替代。</div>
+      <div class="ing-tag">规模化养殖</div>
+    </div>
+    <div class="ing-card reveal reveal-d3">
+      <div class="ing-emoji">
+        <img src="assets/ingredient/yeast.jpg" alt="天然酵母" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <svg style="display:none;width:40px;height:40px;" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="10" stroke="rgba(192,123,26,0.5)" stroke-width="1.5" fill="rgba(192,123,26,0.08)"/>
+          <circle cx="20" cy="20" r="5" stroke="rgba(192,123,26,0.35)" stroke-width="1" fill="rgba(192,123,26,0.05)"/>
+          <path d="M20 10 Q22 8 20 6 M20 30 Q22 32 20 34 M10 20 Q8 22 6 20 M30 20 Q32 22 34 20" stroke="rgba(192,123,26,0.4)" stroke-width="1" fill="none"/>
+        </svg>
+      </div>
+      <div class="ing-name">天然酵母</div>
+      <div class="ing-desc">活性干酵母慢发酵，产生自然气孔结构与发酵香气，无快速泡打粉。</div>
+      <div class="ing-tag">低温保活处理</div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== FACTORY ====== -->
+<!-- 滚动叙事容器（批次 2 新增） -->
+<div id="factory-scroll-container">
+  <section id="factory">
+    <div class="factory-header">
+      <div>
+        <div class="eyebrow" style="color:rgba(232,169,58,0.7)">Factory · 漳州 ZHZ-01</div>
+        <h2 class="reveal" style="color:var(--cream)">自动化<em style="color:var(--gold)">生产线</em></h2>
+      </div>
+      <div class="factory-mono">
+        // Real-time production<br>
+        // Tunnel oven · 220°C<br>
+        // Zero human contact
+      </div>
+    </div>
+
+    <!-- 粘性舞台容器 -->
+    <div id="factory-sticky-stage">
+      <div id="factory-canvas-wrap">
+        <!-- 加载动画 -->
+        <div id="factory-loading" style="
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: #0E0904;
+          z-index: 20;
+          transition: opacity 0.6s ease;
+        ">
+          <div style="position: relative; width: 80px; height: 80px;">
+            <!-- 环形进度条 SVG -->
+            <svg width="80" height="80" viewBox="0 0 80 80" style="transform: rotate(-90deg);">
+              <!-- 背景环 -->
+              <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(232,169,58,0.15)" stroke-width="3"/>
+              <!-- 进度环 -->
+              <circle id="factory-loading-ring" cx="40" cy="40" r="34" fill="none" stroke="#D9A441" stroke-width="3" 
+                stroke-linecap="round" stroke-dasharray="213.628" stroke-dashoffset="213.628"
+                style="transition: stroke-dashoffset 0.1s linear;"/>
+            </svg>
+            <!-- 百分比文字 -->
+            <div style="
+              position: absolute;
+              inset: 0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-family: var(--mono, 'DM Mono', monospace);
+              font-size: 0.75rem;
+              color: var(--gold, #D9A441);
+              letter-spacing: 0.05em;
+            ">
+              <span id="factory-loading-percent">0</span><span style="font-size: 0.5rem;">%</span>
+            </div>
+          </div>
+          <div style="
+            margin-top: 20px;
+            font-family: var(--mono, 'DM Mono', monospace);
+            font-size: 0.6rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: rgba(250, 246, 238, 0.4);
+          ">加载中</div>
+        </div>
+        <canvas id="factory-canvas" style="width:100%;height:100%;display:block;"></canvas>
+        <!-- 火候控制 UI -->
+        <div class="factory-hold-bar" id="factory-hold-bar">
+          <div class="factory-hold-fill" id="factory-hold-fill"></div>
+        </div>
+        <div class="factory-hold-label" id="factory-hold-label">按住控火候</div>
+        <div class="factory-hold-hint" id="factory-hold-hint">长按控制火候 →</div>
+        <!-- 舞台中央火候文案 -->
+        <div class="factory-stage-hint" id="factory-stage-hint"></div>
+      </div>
+    </div>
+
+    <div class="factory-chips">
+    <div class="f-chip reveal">
+      <div class="f-chip-num">220°C</div>
+      <div class="f-chip-label">Tunnel Oven Temp</div>
+      <div class="f-chip-status">live</div>
+    </div>
+    <div class="f-chip reveal reveal-d1">
+      <div class="f-chip-num">45m</div>
+      <div class="f-chip-label">Total Rise Time</div>
+      <div class="f-chip-status">stable</div>
+    </div>
+    <div class="f-chip reveal reveal-d2">
+      <div class="f-chip-num">0</div>
+      <div class="f-chip-label">Human Contact Points</div>
+      <div class="f-chip-status">verified</div>
+    </div>
+    <div class="f-chip reveal reveal-d3">
+      <div class="f-chip-num">24h</div>
+      <div class="f-chip-label">Fresh Shelf Life</div>
+      <div class="f-chip-status">monitoring</div>
+    </div>
+  </div>
+</section>
+</div><!-- end factory-scroll-container -->
+
+<!-- ====== NARRATIVE PIN — 叙事过渡段 ====== -->
+<div id="narrative-pin">
+  <div class="narrative-inner">
+    <div class="narrative-bg"></div>
+    <div class="narrative-card reveal">
+      <div class="narrative-kv">From Dough to Table</div>
+      <h2 class="narrative-headline">每一片豪士<br>都经过 <em>相同</em> 的匠心</h2>
+      <p class="narrative-sub">
+        漳州工厂的同一条生产线，
+        标准化出品，却保留手工烘焙的风味记忆。
+        这是工业化与温度的唯一交集。
+      </p>
+      <div class="narrative-line"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== PRODUCTS ====== -->
+<section id="products">
+  <div class="products-header">
+    <div>
+      <div class="eyebrow reveal">Product Line</div>
+      <h2 class="reveal reveal-d1">豪士<em>产品</em>系列</h2>
+    </div>
+    <a href="#cta" class="btn btn-outline reveal reveal-d2">View All →</a>
+  </div>
+  <div class="products-grid">
+
+    <div class="prod-card reveal">
+      <div class="prod-img" style="background: linear-gradient(135deg,#EDD9A3,#C8861A);">
+        <img src="assets/product/toast.png" alt="经典白吐司" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';">
+      </div>
+      <div class="prod-body">
+        <span class="prod-tag">Classic</span>
+        <div class="prod-name">经典白吐司</div>
+        <p class="prod-desc">方形切片，内芯柔软拉丝，烤边焦香。早餐首选，全家共享。</p>
+        <div class="prod-footer">
+          <span class="prod-link">Explore →</span>
+          <span class="prod-badge">0 人工色素</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prod-card reveal reveal-d1">
+      <div class="prod-img" style="background: linear-gradient(135deg,#F5DCA0,#D4952A);">
+        <img src="assets/product/softbun.png" alt="小软面包" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';">
+      </div>
+      <div class="prod-body">
+        <span class="prod-tag">Bestseller</span>
+        <div class="prod-name">小软面包</div>
+        <p class="prod-desc">奶香圆润，蛋洗金黄表皮，夹心款丰富可选。一口一个的幸福感。</p>
+        <div class="prod-footer">
+          <span class="prod-link">Explore →</span>
+          <span class="prod-badge">奶香浓郁</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prod-card reveal reveal-d2">
+      <div class="prod-img" style="background: linear-gradient(135deg,#E8F5E9,#81C784);">
+        <img src="assets/product/lacto.png" alt="乳酸菌面包" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';">
+      </div>
+      <div class="prod-body">
+        <span class="prod-tag health">Health+</span>
+        <div class="prod-name">乳酸菌面包</div>
+        <p class="prod-desc">活性乳酸菌配方，洁净白色外观，肠道健康新选择。清爽不腻。</p>
+        <div class="prod-footer">
+          <span class="prod-link">Explore →</span>
+          <span class="prod-badge" style="color:#4CAF50">益生菌配方</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prod-card reveal reveal-d1">
+      <div class="prod-img" style="background: linear-gradient(135deg,#A1887F,#795548);">
+        <img src="assets/product/wholewheat.png" alt="全麦吐司" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';">
+      </div>
+      <div class="prod-body">
+        <span class="prod-tag health">Whole Grain</span>
+        <div class="prod-name">全麦吐司</div>
+        <p class="prod-desc">全麦粉比例≥50%，麸皮颗粒清晰可见，高纤低GI。</p>
+        <div class="prod-footer">
+          <span class="prod-link">Explore →</span>
+          <span class="prod-badge" style="color:#4CAF50">高纤维</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prod-card reveal reveal-d2">
+      <div class="prod-img" style="background: linear-gradient(135deg,#FFE0B2,#FF9800);">
+        <img src="assets/product/sandwich.png" alt="三明治系列" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';">
+      </div>
+      <div class="prod-body">
+        <span class="prod-tag">Lunch</span>
+        <div class="prod-name">三明治系列</div>
+        <p class="prod-desc">多层食材截面，蔬菜鸡蛋火腿任意搭配。办公室午餐好搭档。</p>
+        <div class="prod-footer">
+          <span class="prod-link">Explore →</span>
+          <span class="prod-badge">多层食材</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prod-card featured-quinoa reveal reveal-d3">
+      <div class="prod-img" style="background: linear-gradient(135deg,#E8F5E9,#A5D6A7);">
+        <img src="assets/product/quinoa.png" alt="藜麦升级款" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';">
+      </div>
+      <div class="prod-body">
+        <span class="prod-tag health">Premium</span>
+        <div class="prod-name">藜麦升级款</div>
+        <p class="prod-desc">三色藜麦颗粒点缀，超级食材加持，蛋白质更丰富。</p>
+        <div class="prod-footer">
+          <span class="prod-link">Explore →</span>
+          <span class="prod-badge health">超级食材</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- 便捷化快捷入口 -->
+<section class="quick-entry" aria-label="quick actions">
+  <div class="quick-entry-inner">
+    <div class="quick-entry-label">Quick Access · 早餐即刻开始</div>
+    <div class="quick-entry-actions">
+      <a class="quick-chip" id="quick-explore" href="#products">探索系列</a>
+      <a class="quick-chip" id="quick-stores" href="https://example.com/stores">附近门店</a>
+      <a class="quick-chip" id="quick-shop" href="https://example.com/shop">线上购买</a>
+    </div>
+  </div>
+</section>
+
+<!-- ====== STORY ====== -->
+<div id="story-section" style="background:var(--cream);position:relative;z-index:2;">
+  <!-- Story FX 层 -->
+  <div id="story-fx-layer" style="position:absolute;inset:0;pointer-events:none;z-index:1;"></div>
+  
+  <div id="story">
+    <div class="story-left story-fx-wrap">
+      <div class="eyebrow reveal">Brand Story</div>
+      <h2 class="reveal reveal-d1">从福建，<br><em>带着温度</em></h2>
+      <div class="timeline">
+        <div class="tl-item reveal reveal-d2">
+          <div class="tl-year">1995</div>
+          <div>
+            <div class="tl-dot"></div>
+            <div class="tl-title">漳州建厂</div>
+            <div class="tl-body">豪士食品在福建漳州正式成立，开启工业化烘焙之路。</div>
+          </div>
+        </div>
+        <div class="tl-item reveal reveal-d2">
+          <div class="tl-year">2005</div>
+          <div>
+            <div class="tl-dot"></div>
+            <div class="tl-title">全国渠道铺开</div>
+            <div class="tl-body">产品覆盖全国超过20个省份，进入主流商超渠道。</div>
+          </div>
+        </div>
+        <div class="tl-item reveal reveal-d2">
+          <div class="tl-year">2015</div>
+          <div>
+            <div class="tl-dot"></div>
+            <div class="tl-title">自动化升级</div>
+            <div class="tl-body">引入全自动烘焙生产线，实现面团到成品全程无接触。</div>
+          </div>
+        </div>
+        <div class="tl-item reveal reveal-d2">
+          <div class="tl-year">2024</div>
+          <div>
+            <div class="tl-dot"></div>
+            <div class="tl-title">健康产品线扩张</div>
+            <div class="tl-body">推出藜麦、全麦、乳酸菌系列，满足消费升级需求。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="story-right story-fx-wrap reveal reveal-d2">
+      <div class="story-quote-fx"></div>
+      <div class="story-quote">
+        "好面包的秘密，<br>
+        是对每一个步骤的尊重。"
+      </div>
+      <p class="story-body">
+        三十年来，豪士始终坚信：真实的原料，透明的生产链路，
+        是一个食品品牌最根本的可信度来源。
+        我们不用人工色素，不走捷径，
+        因为每天早上你的早餐桌值得更好的选择。
+      </p>
+      <a href="#ingredients" class="btn btn-fill" style="display:inline-flex;">了解我们的原料 →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ====== CTA ====== -->
+<section id="cta">
+  <!-- CTA 热场液化层 -->
+  <canvas id="cta-heat-canvas"></canvas>
+  <div class="cta-inner">
+    <div class="cta-mono">Start Your Morning</div>
+    <h2 class="cta-title reveal">开启你的<br><em>豪士早餐</em></h2>
+    <p class="cta-sub reveal reveal-d1">
+      全国超过100万个销售网点，
+      便利店、商超、电商平台均有售。
+      从明天早上开始。
+    </p>
+    <div class="cta-buttons reveal reveal-d2">
+      <button class="btn-cta primary" onclick="window.open('https://example.com/stores')">Find Nearest Store</button>
+      <button class="btn-cta ghost" onclick="window.open('https://example.com/shop')">Shop Online →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ====== FOOTER ====== -->
+<footer>
+  <div class="footer-grid-wrap">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="footer-logo">HAOSHI<em>.</em></div>
+      <p class="footer-tagline">
+        豪士（福建）食品有限公司<br>
+        Everyday Fresh Bread Since 1995
+      </p>
+      <div class="footer-contact">
+        <a href="tel:400-888-9999" class="footer-tel" aria-label="客服热线">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          400-888-9999
+        </a>
+        <a href="mailto:contact@haoshi.com" class="footer-email" aria-label="联系邮箱">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          contact@haoshi.com
+        </a>
+      </div>
+      <div class="footer-address">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;opacity:0.5;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        福建省漳州市芗城区金峰工业区
+      </div>
+      <!-- 社媒矩阵 -->
+      <div class="footer-social" aria-label="社交媒体">
+        <a href="https://weibo.com/haoshi" class="social-icon" title="微博" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10.098 20c-4.453 0-9.098-1.932-9.098-5.158 0-1.662 1.051-3.455 2.858-4.98 1.201-1.013 2.627-1.603 4.078-1.603.432 0 .849.048 1.243.143 1.818-1.176 4.078-1.176 5.254 0 .394-.095.811-.143 1.243-.143 1.451 0 2.877.59 4.078 1.603 1.807 1.525 2.858 3.318 2.858 4.98 0 3.226-4.645 5.158-9.098 5.158h-.002z"/></svg>
+        </a>
+        <a href="https://douyin.com/haoshi" class="social-icon" title="抖音" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+        </a>
+        <a href="https://xiaohongshu.com/haoshi" class="social-icon" title="小红书" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.793c0-2.501 1.501-3.905 3.777-3.905 1.101 0 2.2.19 2.2.19v2.351h-1.247c-1.24 0-1.628.772-1.628 1.563v1.875h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/></svg>
+        </a>
+        <a href="https://bilibili.com/haoshi" class="social-icon" title="B站" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333l-.16-.014c-1.51-.036-2.769-.556-3.773-1.56S-.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.173-1.16a1.234 1.234 0 0 1-.373-.906c0-.356.124-.659.373-.907l.027-.027c.267-.249.574-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16.213l2.027 2.027c.267.249.573.373.92.373.346 0 .653-.124.92-.373.249-.267.373-.57.373-.907 0-.335-.124-.638-.373-.906L17.813 4.653zM5.333 7.24c-.373 0-.684.124-.933.373-.25.249-.373.557-.373.92 0 .356.124.657.373.907.249.249.56.373.933.373h13.334c.072 0 .142-.014.213-.04.267-.071.48-.213.64-.427.16-.213.227-.464.2-.753-.036-.856-.376-1.565-1.027-2.127-.65-.561-1.494-.848-2.533-.862H5.333zm-.213 4.426c-.533 0-.973.16-1.32.48-.346.32-.523.731-.533 1.227 0 .142.014.278.04.4.071.356.241.657.507.907.267.249.592.373.973.373h11.04c.072 0 .142-.014.213-.04.267-.071.48-.213.64-.427.16-.213.227-.464.2-.753a1.58 1.58 0 0 0-.48-1.04c-.294-.302-.68-.454-1.16-.454l-9.786-.014-.334.333zm14.133 2.36c.427 0 .791.142 1.094.427.302.284.462.649.48 1.094 0 .072-.008.143-.027.213-.053.249-.168.462-.347.64a1.665 1.665 0 0 1-.64.347 1.23 1.23 0 0 1-.24.04c-.445.018-.813-.137-1.107-.467-.293-.33-.447-.713-.467-1.147 0-.445.16-.83.48-1.147.32-.32.72-.48 1.2-.48l.267.013-.267.014h-.213l-.267.013h-.213v.013c-.089.018-.165.044-.227.08a.557.557 0 0 0-.24.213c-.071.089-.124.195-.16.32-.018.124-.027.249-.027.373 0 .072.004.143.013.213.04.249.155.462.347.64.195.177.434.266.72.267h.013l.214.013-.214.014-.013-.013c-.044.018-.08.035-.107.053z"/></svg>
+        </a>
+        <!-- 二维码占位 -->
+        <div class="social-qr" title="微信扫码关注" role="img" aria-label="微信二维码">
+          <div class="qr-placeholder" tabindex="0" role="button" aria-label="显示微信二维码">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-col" id="footer-products">
+      <h4>Products · 产品系列</h4>
+      <ul>
+        <li><a href="#pocket">口袋面包系列</a></li>
+        <li><a href="#toast">吐司系列</a></li>
+        <li><a href="#cake">蛋糕系列</a></li>
+        <li><a href="#sandwich">夹心系列</a></li>
+        <li><a href="#yeqilin">叶奇灵系列</a></li>
+      </ul>
+    </div>
+    <div class="footer-col" id="footer-brand">
+      <h4>Brand · 品牌</h4>
+      <ul>
+        <li><a href="#story-section">品牌故事</a></li>
+        <li><a href="#ingredients">原料溯源</a></li>
+        <li><a href="#factory">工厂参观</a></li>
+        <li><a href="#">食品安全</a></li>
+        <li><a href="#">投资者关系</a></li>
+      </ul>
+    </div>
+    <div class="footer-col" id="footer-contact">
+      <h4>Contact · 联系</h4>
+      <ul>
+        <li><a href="mailto:distributor@haoshi.com">经销商合作</a></li>
+        <li><a href="mailto:media@haoshi.com">媒体联系</a></li>
+        <li><a href="tel:400-XXX-XXXX">消费者服务</a></li>
+        <li><a href="#">加入我们</a></li>
+      </ul>
+    </div>
+  </div>
+  </div><!-- /.footer-grid-wrap -->
+  <div class="footer-bottom">
+    <div class="footer-legal">
+      © 2025 豪士（福建）食品有限公司 · All Rights Reserved
+    </div>
+    <div class="footer-icp">
+      ICP备案号：<a href="http://beian.miit.gov.cn" target="_blank">待补充</a>
+    </div>
+    <div class="footer-version">页面版本 v2.6</div>
+  </div>
+</footer>
+
+<!-- ============================================================
+   BATCH 1: INITIALIZATION
+   ============================================================ -->
+<script>
+/* ============================================================
+   BATCH 1: Asset Preloading System Initialization
+   ============================================================ */
+
+// 页面可见性恢复
+let pageVisibilityHandler = null;
+
+// 等待 DOM 加载完成后初始化预加载系统
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('[Haoshi] Initializing Batch 1 Asset System...');
+
+  // 0. 初始化 FX Config（必须优先初始化）
+  if (window.FXConfig) {
+    FXConfig.init();
+    console.log('[Haoshi] FX Config initialized');
+  }
+
+  // 0.1 初始化 Cursor FX（统一鼠标状态 + 分区效果）
+  if (window.CursorFX) {
+    CursorFX.init();
+    console.log('[Haoshi] Cursor FX initialized');
+  }
+
+  // 0.2 初始化 FX Renderer（统一粒子渲染层）
+  if (window.FXRenderer) {
+    FXRenderer.init();
+    console.log('[Haoshi] FX Renderer initialized');
+  }
+
+  // 0.3 初始化 Section FX Controller（向后兼容）
+  if (window.SectionFX) {
+    SectionFX.init();
+    console.log('[Haoshi] Section FX Controller initialized');
+  }
+
+  // 1. 初始化字体系统
+  if (window.FontLoader) {
+    FontLoader.init();
+  }
+
+  // 2. 启动预加载器（使用 Promise.race 添加超时保护）
+  if (window.Preloader) {
+    // 设置 8 秒超时，超时后强制设置 factoryCoreReady
+    const timeoutPromise = new Promise(resolve => setTimeout(() => {
+      console.warn('[Preloader] Timeout reached, forcing factoryCoreReady');
+      resolve();
+    }, 8000));
+
+    // 竞速：预加载完成 或 超时
+    await Promise.race([
+      Preloader.start(),
+      timeoutPromise
+    ]);
+
+    console.log('[Preloader] Ready to proceed');
+  }
+
+  // 3. 初始化音频管理器
+  if (window.AudioManager) {
+    await AudioManager.init();
+
+    // 方案2: 优先尝试自动播放
+    const autoPlayResult = await AudioManager.tryAutoPlayOnLoad();
+
+    // 如果自动播放失败，挂载首次交互监听器
+    if (!autoPlayResult.success) {
+      console.log('[Haoshi] Auto-play failed, waiting for user interaction');
+
+      // 首次用户交互后激活音频（点击或滑动任意位置）
+      let interactionHandled = false;
+      const handleFirstInteraction = () => {
+        if (interactionHandled) return;
+        interactionHandled = true;
+        AudioManager.handleFirstInteraction();
+        console.log('[Haoshi] Audio activated by user interaction');
+        
+        // 移除所有监听器
+        document.removeEventListener('click', handleFirstInteraction);
+        document.removeEventListener('touchmove', handleFirstInteraction);
+      };
+
+      // 点击直接激活
+      document.addEventListener('click', handleFirstInteraction, { once: true });
+      
+      // 触摸滑动激活（需要移动一定距离）
+      const swipeThreshold = 30;
+      let touchStartY = 0;
+      let touchStartX = 0;
+
+      document.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+      }, { passive: true });
+      
+      document.addEventListener('touchmove', (e) => {
+        if (interactionHandled) return;
+        const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+        const deltaX = Math.abs(e.touches[0].clientX - touchStartX);
+        if (deltaY > swipeThreshold || deltaX > swipeThreshold) {
+          handleFirstInteraction();
+        }
+      }, { passive: true });
+    } else {
+      console.log('[Haoshi] Auto-play successful, BGM is playing');
+    }
+  }
+
+  // 4. 挂载声音开关 UI
+  if (window.SoundToggle) {
+    SoundToggle.mount(document.body);
+  }
+
+  // 5. 页面可见性恢复处理
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      // 页面恢复可见时，重新检查资源状态
+      if (window.AudioManager) {
+        AudioManager.resumeBGM();
+      }
+      console.log('[Haoshi] Page visible, resource state restored');
+    } else {
+      // 页面不可见时
+      if (window.AudioManager) {
+        AudioManager.pauseBGM();
+      }
+    }
+  });
+
+  console.log('[Haoshi] Batch 1 initialization complete');
+  console.log('[Haoshi] ReadyFlags:', window.ReadyFlags);
+});
+</script>
+
+<!-- ============================================================
+   JAVASCRIPT
+   ============================================================ -->
+<script>
+/* ============================================================
+   可配置链接常量（方便后续替换）
+   ============================================================ */
+const LINKS = {
+  // 产品系列
+  productSeries: {
+    pocket: '#products',           // 口袋面包
+    toast: '#products',           // 吐司
+    cake: '#products',           // 蛋糕
+    sandwich: '#products',       // 夹心
+    yeQilin: '#products',        // 叶奇灵
+  },
+  // Quick Access
+  quickAccess: {
+    explore: '#products',        // 探索系列
+    stores: 'https://example.com/stores',  // 附近门店
+    shop: 'https://example.com/shop',      // 线上购买
+  },
+  // CTA 按钮
+  cta: {
+    findStore: 'https://example.com/stores',    // 附近门店
+    shopOnline: 'https://example.com/shop',     // 线上购买
+  },
+  // 社媒
+  social: {
+    wechat: 'assets/social/wechat-qr.png',     // 微信二维码
+    weibo: 'https://weibo.com/example',         // 微博
+    douyin: 'https://douyin.com/example',       // 抖音
+    xiaohongshu: 'https://xiaohongshu.com/example', // 小红书
+    bilibili: 'https://bilibili.com/example',   // B站
+  },
+  // 联系方式
+  contact: {
+    email: 'contact@haoshi.com',
+    phone: '400-XXX-XXXX',
+    distributor: 'distributor@haoshi.com',
+    media: 'media@haoshi.com',
+  },
+  // Footer 产品分类链接
+  footer: {
+    products: {
+      pocket: '#products',
+      toast: '#products',
+      cake: '#products',
+      sandwich: '#products',
+      yeQilin: '#products',
+    },
+    brand: {
+      story: '#story-section',
+      ingredients: '#ingredients',
+      factory: '#factory',
+      safety: '#',
+      investor: '#',
+    },
+    contact: {
+      distributor: 'mailto:distributor@haoshi.com',
+      media: 'mailto:media@haoshi.com',
+      consumer: 'tel:400-XXX-XXXX',
+      careers: '#',
+    },
+  },
+};
+
+// === 应用 LINKS 配置到页面 ===
+(function() {
+  // Quick Access
+  const quickExplore = document.getElementById('quick-explore');
+  const quickStores = document.getElementById('quick-stores');
+  const quickShop = document.getElementById('quick-shop');
+  if (quickExplore) quickExplore.href = LINKS.quickAccess.explore;
+  if (quickStores) quickStores.href = LINKS.quickAccess.stores;
+  if (quickShop) quickShop.href = LINKS.quickAccess.shop;
+  
+  // CTA Buttons
+  const ctaBtns = document.querySelectorAll('.btn-cta');
+  ctaBtns.forEach(btn => {
+    if (btn.textContent.includes('Store')) {
+      btn.onclick = () => window.open(LINKS.cta.findStore);
+    } else if (btn.textContent.includes('Online')) {
+      btn.onclick = () => window.open(LINKS.cta.shopOnline);
+    }
+  });
+})();
+
+/* ---- 1. 霓虹跟随光标 ---- */
+const main = document.querySelector('.cursor-main'),
+      outline = document.querySelector('.cursor-outline'),
+      glow = document.querySelector('.cursor-glow');
+let mouseX = 0, mouseY = 0,
+    mainX = 0, mainY = 0,
+    outlineX = 0, outlineY = 0,
+    glowX = 0, glowY = 0;
+
+// 检测 prefers-reduced-motion
+const shouldReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+if (!shouldReduceMotion && !isTouchDevice) {
+  window.addEventListener('mousemove', e => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  function animate() {
+    mainX += (mouseX - mainX - 8) * .25;
+    mainY += (mouseY - mainY - 8) * .25;
+    outlineX += (mouseX - outlineX - 20) * .15;
+    outlineY += (mouseY - outlineY - 20) * .15;
+    glowX += (mouseX - glowX - 30) * .1;
+    glowY += (mouseY - glowY - 30) * .1;
+    main.style.left = mainX + 'px';
+    main.style.top = mainY + 'px';
+    outline.style.left = outlineX + 'px';
+    outline.style.top = outlineY + 'px';
+    glow.style.left = glowX + 'px';
+    glow.style.top = glowY + 'px';
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  // hover 放大发光效果
+  const hoverSelectors = 'a, button, [data-hover], .ing-card, .prod-card, .jsn-item, .f-chip, .quick-chip, .btn-cta, .prod-link, .nav-links a';
+  document.querySelectorAll(hoverSelectors).forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      main.style.transform = 'scale(1.3)';
+      outline.style.transform = 'scale(1.6)';
+      outline.style.borderColor = '#F5D78E';
+      glow.style.transform = 'scale(2)';
+      glow.style.opacity = '1';
+    });
+    el.addEventListener('mouseleave', () => {
+      main.style.transform = 'scale(1)';
+      outline.style.transform = 'scale(1)';
+      outline.style.borderColor = '#E8A93A';
+      glow.style.transform = 'scale(1)';
+      glow.style.opacity = '.6';
+    });
+  });
+} else {
+  document.querySelectorAll('.cursor-follower').forEach(el => el.style.display = 'none');
+}
+
+/* ---- 2. Nav scroll ---- */
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+}, { passive: true });
+
+/* ---- 3. B2 滚动叙事控制 ---- */
+const STEPS = 4;
+const journeySection = document.getElementById('journey-section');
+
+function getJourneyProgress() {
+  const rect = journeySection.getBoundingClientRect();
+  const totalH = journeySection.offsetHeight - window.innerHeight;
+  const scrolled = -rect.top;
+  return Math.max(0, Math.min(1, scrolled / totalH));
+}
+
+function setStep(idx) {
+  // 文字步骤
+  document.querySelectorAll('.journey-step').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  // 图片步骤
+  document.querySelectorAll('.journey-img').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  // 进度点
+  document.querySelectorAll('.jp-dot').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  // 步骤导航
+  document.querySelectorAll('.jsn-item').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+}
+
+let lastStep = -1;
+function onScroll() {
+  const p = getJourneyProgress();
+  const step = Math.min(STEPS - 1, Math.floor(p * STEPS));
+  if (step !== lastStep) {
+    setStep(step);
+    lastStep = step;
+  }
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+
+/* 步骤导航点击 */
+document.querySelectorAll('.jsn-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const step = parseInt(el.dataset.step);
+    const sectionRect = journeySection.getBoundingClientRect();
+    const totalH = journeySection.offsetHeight - window.innerHeight;
+    const targetScroll = window.scrollY + sectionRect.top + (step / STEPS) * totalH;
+    window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+  });
+});
+
+/* ---- 4. 侧边进度条 — 点击/滚动同步修复 ---- */
+const progressSections = [
+  { id: 'hero' },
+  { id: 'journey-section' },
+  { id: 'ingredients' },
+  { id: 'factory' },
+  { id: 'products' },
+  { id: 'story' }
+];
+const progressDots = document.querySelectorAll('.progress-dot');
+let progressActiveIndex = 0;
+let progressScrollLock = false;
+
+/* 滚动监听：只在非点击滚动期间更新 active */
+function onProgressScroll() {
+  if (progressScrollLock) return;
+  const center = window.scrollY + window.innerHeight / 2;
+  let nearest = 0;
+  let nearestDist = Infinity;
+  progressSections.forEach((sec, i) => {
+    const el = document.getElementById(sec.id);
+    if (!el) return;
+    const elMid = el.offsetTop + el.offsetHeight / 2;
+    const d = Math.abs(elMid - center);
+    if (d < nearestDist) { nearestDist = d; nearest = i; }
+  });
+  if (nearest !== progressActiveIndex) {
+    progressActiveIndex = nearest;
+    progressDots.forEach((d, i) => d.classList.toggle('active', i === nearest));
+  }
+}
+window.addEventListener('scroll', onProgressScroll, { passive: true });
+
+/* 点击 dot：立即标记 + 锁定滚动干扰 + 到达后解锁 */
+progressDots.forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    if (i === progressActiveIndex) return;
+    const target = document.getElementById(progressSections[i].id);
+    if (!target) return;
+
+    /* 立即更新视觉状态 */
+    progressDots.forEach(d => d.classList.remove('active'));
+    dot.classList.add('active');
+    progressActiveIndex = i;
+
+    /* 锁定滚动干扰 */
+    progressScrollLock = true;
+
+    /* 触发平滑滚动 */
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    /* 滚动到达后解锁：监听 scroll 确认到达目标位置 */
+    let checkCount = 0;
+    const intervalId = setInterval(() => {
+      checkCount++;
+      const targetTop = target.offsetTop;
+      const curTop = window.scrollY;
+      if (Math.abs(curTop - targetTop) < 8 || checkCount > 60) {
+        clearInterval(intervalId);
+        progressScrollLock = false;
+        window.removeEventListener('scroll', onProgressScroll);
+        /* 重新绑定，确保 active 正确 */
+        setTimeout(() => {
+          onProgressScroll();
+          window.addEventListener('scroll', onProgressScroll, { passive: true });
+        }, 0);
+      }
+    }, 50);
+
+    /* 2秒超时兜底 */
+    setTimeout(() => {
+      clearInterval(intervalId);
+      progressScrollLock = false;
+    }, 2000);
+  });
+});
+/* 初始化 active */
+onProgressScroll();
+
+/* ---- 5. Reveal animations ---- */
+const reveals = document.querySelectorAll('.reveal');
+const revealObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); });
+}, { threshold: 0.12 });
+reveals.forEach(el => revealObs.observe(el));
+
+/* ---- 6. Factory Three.js Conveyor + 长按火候控制 ---- */
+(function() {
+  const canvas = document.getElementById('factory-canvas');
+  if (!canvas) return;
+
+  // === 性能检测 & 降级 ===
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isMobile = window.innerWidth < 768;
+  const isLowCPU = navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4;
+  const supportsVibrate = 'vibrate' in navigator;
+
+  if (isMobile || isLowCPU || prefersReducedMotion) {
+    canvas.style.display = 'none';
+    const container = canvas.parentElement;
+    if (container) {
+      container.style.background = 'linear-gradient(90deg, #1C1208 0%, #2A1A08 50%, #1C1208 100%)';
+      const fallback = document.createElement('div');
+      fallback.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:\'DM Mono\',monospace;color:rgba(200,134,26,0.3);font-size:0.7rem;letter-spacing:0.1em;';
+      fallback.textContent = '// Conveyor Active';
+      container.appendChild(fallback);
+
+      // Batch 1: CSS fallback for spark particles
+      if (window.SparkParticles && SparkParticles.shouldUseFallback()) {
+        SparkParticles.createFallback(container);
+      }
+    }
+    return;
+  }
+
+  // === 加载动画元素 ===
+  const loadingEl = document.getElementById('factory-loading');
+  const loadingRing = document.getElementById('factory-loading-ring');
+  const loadingPercent = document.getElementById('factory-loading-percent');
+  
+  // 环形进度条周长
+  const ringCircumference = 213.628; // 2 * PI * 34
+  
+  function updateLoadingUI(percent) {
+    if (!loadingEl) return;
+    const offset = ringCircumference - (percent / 100) * ringCircumference;
+    if (loadingRing) {
+      loadingRing.style.strokeDashoffset = offset;
+    }
+    if (loadingPercent) {
+      loadingPercent.textContent = percent;
+    }
+  }
+  
+  function hideLoadingUI() {
+    if (loadingEl) {
+      loadingEl.style.opacity = '0';
+      setTimeout(() => {
+        loadingEl.style.display = 'none';
+      }, 600);
+    }
+  }
+
+  // 设置预加载进度回调
+  if (window.Preloader && typeof window.Preloader.setFactoryReadyCallback === 'function') {
+    window.Preloader.setFactoryReadyCallback((percent) => {
+      updateLoadingUI(percent);
+    });
+  }
+
+  // Batch 1: 等待 Factory Core Ready 再初始化 Three.js
+  // 添加最大等待时间和轮询保护
+  const maxWaitTime = 8000; // 优化：最多等待 8 秒（原 15 秒）
+  const checkInterval = 100;
+  let waitTime = 0;
+
+  function tryInitFactory() {
+    // 更新等待进度显示
+    const estimatedProgress = Math.min(95, Math.round((waitTime / maxWaitTime) * 100));
+    updateLoadingUI(estimatedProgress);
+    
+    if (window.Preloader && !window.Preloader.isReady('factoryCoreReady')) {
+      waitTime += checkInterval;
+      if (waitTime >= maxWaitTime) {
+        console.warn('[Factory] Max wait time reached, forcing init');
+        ReadyFlags.factoryCoreReady = true; // 强制设置
+        updateLoadingUI(100);
+      } else {
+        setTimeout(tryInitFactory, checkInterval);
+        return;
+      }
+    }
+    initFactoryScene();
+  }
+
+  tryInitFactory();
+
+  // Batch 1: Factory Scene 初始化（独立函数）
+  function initFactoryScene() {
+    console.log('[Factory] Initializing Three.js scene...');
+    
+    // 完成加载动画
+    updateLoadingUI(100);
+    setTimeout(hideLoadingUI, 300);
+
+    // === 批次 4: 性能分档检测 ===
+    const perfTier = (() => {
+      const cores = navigator.hardwareConcurrency || 4;
+      const isLowCPU = cores < 4;
+      const isMobile = window.innerWidth < 768;
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      
+      if (prefersReduced || !window.WebGLRenderingContext) return 'low';
+      if (isLowCPU || isMobile) return 'medium';
+      return 'high';
+    })();
+    console.log(`[Factory] Performance tier: ${perfTier}`);
+
+    // 根据性能分档设置粒子数量
+    const STEAM_COUNT = perfTier === 'high' ? 40 : perfTier === 'medium' ? 24 : 12;
+    const BREAD_COUNT = perfTier === 'high' ? 8 : perfTier === 'medium' ? 6 : 4;
+    console.log(`[Factory] Particle counts: STEAM=${STEAM_COUNT}, BREAD=${BREAD_COUNT}`);
+
+    // === WebGL 支持检测 ===
+    try {
+      const testCanvas = document.createElement('canvas');
+      const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+      if (!gl) {
+        throw new Error('WebGL not supported');
+      }
+      console.log('[Factory] WebGL supported');
+    } catch (e) {
+      console.warn('[Factory] WebGL not available, using fallback:', e.message);
+      canvas.style.display = 'none';
+      const container = canvas.parentElement;
+      if (container) {
+        container.style.background = 'linear-gradient(90deg, #1C1208 0%, #2A1A08 50%, #1C1208 100%)';
+        const fallback = document.createElement('div');
+        fallback.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:\'DM Mono\',monospace;color:rgba(200,134,26,0.4);font-size:0.8rem;letter-spacing:0.1em;text-align:center;padding:20px;';
+        fallback.innerHTML = '<div style="opacity:0.6;">// Factory Active<br><span style="font-size:0.6rem;opacity:0.5;">3D visualization unavailable</span></div>';
+        container.appendChild(fallback);
+      }
+      return;
+    }
+
+    // === 场景初始化 ===
+    const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0E0904);
+  const container = canvas.parentElement;
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+  camera.position.set(0, 2.8, 7);
+  camera.lookAt(0, 0, 0);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // === 光照 ===
+  scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+  const mainLight = new THREE.DirectionalLight(0xffffff, 0.7);
+  mainLight.position.set(5, 10, 5);
+  scene.add(mainLight);
+  const fillLight = new THREE.DirectionalLight(0xC8861A, 0.25);
+  fillLight.position.set(-5, 3, -5);
+  scene.add(fillLight);
+  const rimLight = new THREE.PointLight(0xE8A93A, 0.3, 15);
+  rimLight.position.set(0, 2, -3);
+  scene.add(rimLight);
+
+  // === 炉膛发光（受 holdProgress 驱动） ===
+  const ovenGlow = new THREE.PointLight(0xFF7722, 0.15, 8);
+  ovenGlow.position.set(0, 1.5, 0);
+  scene.add(ovenGlow);
+
+  // === 传送带 ===
+  const beltGeo = new THREE.BoxGeometry(22, 0.12, 2.2);
+  const beltMat = new THREE.MeshStandardMaterial({ color: 0x2A1A08, roughness: 0.9, metalness: 0.1 });
+  const belt = new THREE.Mesh(beltGeo, beltMat);
+  belt.position.y = -0.55;
+  scene.add(belt);
+  const beltLines = new THREE.Group();
+  for (let i = -12; i <= 12; i++) {
+    const lg = new THREE.BoxGeometry(0.015, 0.13, 2.2);
+    const lm = new THREE.MeshStandardMaterial({ color: 0x3A2A18 });
+    const line = new THREE.Mesh(lg, lm);
+    line.position.set(i * 1.4, -0.55, 0);
+    beltLines.add(line);
+  }
+  scene.add(beltLines);
+
+  // === 蒸汽粒子系统（使用性能分档数量） ===
+  const steamParticles = [];
+  const steamGroup = new THREE.Group();
+  scene.add(steamGroup);
+  const steamGeo = new THREE.BufferGeometry();
+  const steamPositions = new Float32Array(STEAM_COUNT * 3);
+  const steamOpacities = new Float32Array(STEAM_COUNT);
+
+  function resetSteamParticle(p, i) {
+    p.x = (Math.random() - 0.5) * 8;
+    p.y = -0.3;
+    p.z = (Math.random() - 0.5) * 1.5;
+    p.vx = (Math.random() - 0.5) * 0.01;
+    p.vy = 0.008 + Math.random() * 0.008;
+    p.vz = (Math.random() - 0.5) * 0.006;
+    p.life = Math.random();
+    p.base = 0.3 + Math.random() * 0.3;
+    steamPositions[i * 3] = p.x;
+    steamPositions[i * 3 + 1] = p.y;
+    steamPositions[i * 3 + 2] = p.z;
+    steamOpacities[i] = 0;
+  }
+
+  for (let i = 0; i < STEAM_COUNT; i++) {
+    const p = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, base: 0 };
+    resetSteamParticle(p, i);
+    steamParticles.push(p);
+  }
+  steamGeo.setAttribute('position', new THREE.BufferAttribute(steamPositions, 3));
+  const steamMat = new THREE.PointsMaterial({
+    color: 0xD4956A,
+    size: 0.08,
+    transparent: true,
+    opacity: 0.5,
+    sizeAttenuation: true
+  });
+  const steamPoints = new THREE.Points(steamGeo, steamMat);
+  steamGroup.add(steamPoints);
+
+  // === 面包类 ===
+  const BREAD_COLORS = [0x6B4A2A, 0x8C6030, 0xC8861A, 0xE8A93A];
+  const BREAD_BAKE_COLORS = [0x8B5A2B, 0xA07030, 0xD4922A, 0xF5A623];
+
+  class Bread {
+    constructor(idx) {
+      this.idx = idx;
+      // 随机大小比例（0.85 ~ 1.15）
+      this.scale = 0.85 + Math.random() * 0.3;
+      // 随机高度偏移（-0.08 ~ 0.12）
+      this.heightOffset = -0.08 + Math.random() * 0.2;
+      // 随机速度偏移（±15%）
+      this.speedOffset = 0.85 + Math.random() * 0.3;
+      // 随机颜色偏移索引
+      this.colorIdx = idx % 4;
+      
+      const geo = new THREE.BoxGeometry(0.75 * this.scale, 0.45 * this.scale, 0.55 * this.scale);
+      this.mat = new THREE.MeshStandardMaterial({
+        color: BREAD_COLORS[this.colorIdx],
+        roughness: 0.65, metalness: 0.05,
+        emissive: BREAD_COLORS[this.colorIdx], emissiveIntensity: 0.02
+      });
+      this.mesh = new THREE.Mesh(geo, this.mat);
+      // 初始位置：随机分布在 -12 到 12 之间，Y 位置后面会由 update 设置
+      this.mesh.position.set(-12 + idx * 3.4 + Math.random() * 1.5, -0.38, 0);
+    }
+
+    update(speed, mouseWorld, holdProgress, beltY) {
+      // 应用速度偏移
+      const effectiveSpeed = speed * this.speedOffset;
+      this.mesh.position.x += effectiveSpeed;
+      
+      // 循环回到左侧
+      if (this.mesh.position.x > 14) {
+        this.mesh.position.set(-14, this.baseY, 0);
+        // 重新随机一些属性
+        this.speedOffset = 0.85 + Math.random() * 0.3;
+        this.heightOffset = -0.08 + Math.random() * 0.2;
+      }
+
+      // 计算面包的基础 Y 位置（传送带上方 + 随机高度偏移）
+      // beltY 是传送带的当前 Y 位置，面包应该在其上方
+      const breadOnBeltY = beltY + 0.17 + this.heightOffset; // 传送带高度补偿 + 随机偏移
+      
+      // 鼠标扰动（叠加在基础 Y 上）
+      const dx = this.mesh.position.x - mouseWorld.x;
+      const dz = this.mesh.position.z - mouseWorld.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      const vibration = 0.05 + holdProgress * 0.12;
+      if (dist < 3) {
+        const inf = (3 - dist) / 3 * 0.15;
+        this.mesh.position.y = breadOnBeltY + Math.sin(Date.now() * 0.003 + this.idx) * inf * vibration * 0.15;
+        this.mesh.rotation.y = Math.sin(Date.now() * 0.002 + this.idx * 0.5) * inf * vibration * 0.15;
+      } else {
+        this.mesh.position.y = breadOnBeltY;
+        this.mesh.rotation.y *= 0.95;
+      }
+
+      // holdProgress 驱动颜色插值（浅金 → 焦糖）
+      const baseColor = new THREE.Color(BREAD_COLORS[this.colorIdx]);
+      const bakeColor = new THREE.Color(BREAD_BAKE_COLORS[this.colorIdx]);
+      const targetColor = baseColor.clone().lerp(bakeColor, holdProgress);
+      this.mat.color.copy(targetColor);
+      this.mat.emissive.copy(targetColor);
+      this.mat.emissiveIntensity = 0.02 + holdProgress * 0.15;
+    }
+  }
+
+  const breads = [];
+  for (let i = 0; i < BREAD_COUNT; i++) breads.push(new Bread(i));
+  breads.forEach(b => scene.add(b.mesh));
+
+  // === 鼠标追踪 ===
+  const mouseWorld = { x: 0, z: 0 };
+  const raycaster = new THREE.Raycaster();
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  container.addEventListener('mousemove', e => {
+    const rect = container.getBoundingClientRect();
+    const m = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    raycaster.setFromCamera(m, camera);
+    const pt = new THREE.Vector3();
+    raycaster.ray.intersectPlane(plane, pt);
+    if (pt) { mouseWorld.x = pt.x; mouseWorld.z = pt.z; }
+  });
+
+  // === 统一状态管理：factoryState ===
+  const factoryState = {
+    // === 运行状态 ===
+    isRunning: true,
+    isVisible: true,
+
+    // === 演示模式 ===
+    mode: 'auto',            // 'auto' | 'temp' | 'speed' | 'automation' | 'fresh'
+    activeCardIndex: -1,     // 当前激活的卡片索引 (-1=无)
+
+    // === 长按火候 ===
+    holdProgress: 0,         // 0-1 长按进度
+    isHolding: false,
+    holdStartTime: 0,
+    isReturning: false,
+    returnStartValue: 0,
+    returnStartTime: 0,
+    lastHoldState: -1,
+
+    // === 速度控制 ===
+    speedMultiplier: 1.0,    // 传送带速度倍率 (0.1-3.0)
+    userSpeedOverride: false, // 用户是否手动调速
+
+    // === 视觉反馈目标值 ===
+    targetOvenGlow: 0,
+    targetSteamIntensity: 0,
+    targetBeltVibration: 0,
+    targetBreadColorShift: 0,
+    targetAutomationGlow: 0,
+    targetFreshnessFog: 0,
+
+    // === 实际视觉反馈（当前值，平滑过渡） ===
+    currentOvenGlow: 0.12,
+    currentSteamIntensity: 0,
+    currentBeltVibration: 0,
+    currentBreadColorShift: 0,
+    currentAutomationGlow: 0,
+    currentFreshnessFog: 0,
+  };
+
+  // === 演示模式配置 ===
+  const DEMO_MODES = {
+    auto:        { ovenGlow: 0,     steam: 0,    beltVib: 0,    breadShift: 0,    autoGlow: 0, fog: 0 },
+    temp:        { ovenGlow: 0.5,   steam: 0.4,  beltVib: 0.1,  breadShift: 0.4, autoGlow: 0, fog: 0 },
+    speed:       { ovenGlow: 0.2,   steam: 0.2,  beltVib: 0.15, breadShift: 0.1,  autoGlow: 0, fog: 0 },
+    automation:  { ovenGlow: 0.1,   steam: 0,    beltVib: 0.05, breadShift: 0,    autoGlow: 0.8, fog: 0 },
+    fresh:       { ovenGlow: 0.05,  steam: 0.6,  beltVib: 0,    breadShift: 0,    autoGlow: 0, fog: 0.5 },
+  };
+
+  const holdFill = document.getElementById('factory-hold-fill');
+  const holdLabel = document.getElementById('factory-hold-label');
+  const holdHint = document.getElementById('factory-hold-hint');
+  const stageHint = document.getElementById('factory-stage-hint'); // 新增：舞台中央文案
+
+  function getHoldState(p) {
+    if (p < 0.34) return 0;
+    if (p < 0.67) return 1;
+    return 2;
+  }
+  const HOLD_STATE_LABELS = ['松软', '金黄', '焦香'];
+  const HOLD_STATE_COLORS = ['rgba(232,169,58,0.7)', '#E8A93A', '#FF8844'];
+
+  // === 统一状态更新函数 ===
+  function updateFactoryState() {
+    // 根据模式计算目标值
+    const modeConfig = DEMO_MODES[factoryState.mode] || DEMO_MODES.auto;
+
+    // 合并 hold 和 demo 模式效果
+    const holdBoost = factoryState.holdProgress;
+
+    factoryState.targetOvenGlow = modeConfig.ovenGlow + holdBoost * 0.5;
+    factoryState.targetSteamIntensity = modeConfig.steam + holdBoost * 0.6;
+    factoryState.targetBeltVibration = modeConfig.beltVib + holdBoost * 0.008;
+    factoryState.targetBreadColorShift = modeConfig.breadShift + holdBoost * 0.5;
+    factoryState.targetAutomationGlow = modeConfig.autoGlow;
+    factoryState.targetFreshnessFog = modeConfig.fog;
+
+    // 平滑过渡到目标值
+    const lerpSpeed = 0.08;
+    factoryState.currentOvenGlow = lerp(factoryState.currentOvenGlow, factoryState.targetOvenGlow, lerpSpeed);
+    factoryState.currentSteamIntensity = lerp(factoryState.currentSteamIntensity, factoryState.targetSteamIntensity, lerpSpeed);
+    factoryState.currentBeltVibration = lerp(factoryState.currentBeltVibration, factoryState.targetBeltVibration, lerpSpeed);
+    factoryState.currentBreadColorShift = lerp(factoryState.currentBreadColorShift, factoryState.targetBreadColorShift, lerpSpeed);
+    factoryState.currentAutomationGlow = lerp(factoryState.currentAutomationGlow, factoryState.targetAutomationGlow, lerpSpeed);
+    factoryState.currentFreshnessFog = lerp(factoryState.currentFreshnessFog, factoryState.targetFreshnessFog, lerpSpeed);
+  }
+
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function updateHoldUI(p) {
+    if (holdFill) holdFill.style.width = (p * 100).toFixed(1) + '%';
+    const state = getHoldState(p);
+    if (holdLabel) {
+      holdLabel.textContent = HOLD_STATE_LABELS[state];
+      holdLabel.style.color = HOLD_STATE_COLORS[state];
+      // 只在按住时显示标签，松手后隐藏
+      holdLabel.style.opacity = factoryState.isHolding ? '1' : '0';
+    }
+    // 更新舞台中央文案（仅在长按时显示）
+    if (stageHint) {
+      if (factoryState.isHolding && p > 0.05) {
+        stageHint.textContent = HOLD_STATE_LABELS[state];
+        stageHint.style.color = HOLD_STATE_COLORS[state];
+        stageHint.style.opacity = '1';
+        stageHint.style.transform = `translate(-50%, -50%) scale(${1 + p * 0.15})`;
+      } else {
+        // 不长按时隐藏
+        stageHint.style.opacity = '0';
+      }
+    }
+    // 跨档位震动
+    if (state !== factoryState.lastHoldState && factoryState.lastHoldState !== -1 && supportsVibrate) {
+      try { navigator.vibrate([20]); } catch(e) {}
+    }
+    factoryState.lastHoldState = state;
+  }
+
+  // Pointer 事件（统一处理 PC + Mobile）
+  function onPointerDown(e) {
+    if (e.pointerType === 'touch') e.preventDefault();
+    factoryState.isHolding = true;
+    factoryState.holdStartTime = performance.now();
+    factoryState.isReturning = false;
+    // 立即显示 UI 反馈
+    if (holdHint) holdHint.style.opacity = '0';
+    if (holdLabel) {
+      holdLabel.textContent = HOLD_STATE_LABELS[0];
+      holdLabel.style.opacity = '1';
+      holdLabel.style.color = HOLD_STATE_COLORS[0];
+    }
+    if (holdFill) holdFill.style.width = '0%';
+    // 长按开始时先隐藏中央文案，等待进度上升再显示
+    if (stageHint) {
+      stageHint.style.opacity = '0';
+    }
+    if (supportsVibrate) try { navigator.vibrate([10]); } catch(e) {}
+  }
+  function onPointerUp(e) {
+    if (!factoryState.isHolding) return;
+    factoryState.isHolding = false;
+    factoryState.returnStartValue = factoryState.holdProgress;
+    factoryState.returnStartTime = performance.now();
+    factoryState.isReturning = true;
+    factoryState.lastHoldState = -1;
+    if (holdHint) holdHint.style.opacity = '1';
+    // 释放时隐藏中央文案
+    if (stageHint) {
+      stageHint.style.opacity = '0';
+    }
+  }
+
+  container.addEventListener('pointerdown', onPointerDown);
+  container.addEventListener('pointerup', onPointerUp);
+  container.addEventListener('pointercancel', onPointerUp);
+  container.addEventListener('pointerleave', onPointerUp);
+
+  // === 横向划动调速 ===
+  let swipeStartX = 0;
+  let swipeStartSpeed = 1;
+  let isSwiping = false;
+
+  container.addEventListener('pointermove', (e) => {
+    if (!isSwiping || factoryState.isHolding) return;
+    const deltaX = e.clientX - swipeStartX;
+    // 横向移动超过 50px 触发调速
+    if (Math.abs(deltaX) > 50) {
+      // 速度范围: 0.3 - 3.0
+      const speedDelta = deltaX / 200; // 每 200px 移动对应 1x 速度变化
+      factoryState.speedMultiplier = Math.max(0.3, Math.min(3.0, swipeStartSpeed + speedDelta));
+      factoryState.userSpeedOverride = true;
+      // 显示速度提示
+      if (holdLabel) {
+        holdLabel.textContent = `${factoryState.speedMultiplier.toFixed(1)}x`;
+        holdLabel.style.opacity = '0.8';
+        holdLabel.style.color = '#5D8E62';
+      }
+    }
+  });
+
+  container.addEventListener('pointerdown', (e) => {
+    if (e.target === canvas) {
+      swipeStartX = e.clientX;
+      swipeStartSpeed = factoryState.speedMultiplier;
+      isSwiping = true;
+    }
+  });
+
+  container.addEventListener('pointerup', () => {
+    if (isSwiping && !factoryState.isHolding) {
+      // 恢复速度提示
+      if (holdLabel) {
+        holdLabel.style.opacity = '0.5';
+        holdLabel.style.color = '';
+      }
+    }
+    isSwiping = false;
+  });
+
+  // === 动画 ===
+  let lastFrame = 0;
+  const FPS = 30;
+  const frameInterval = 1000 / FPS;
+  const BASE_SPEED = 0.025;
+  const HOLD_DURATION = 2200;
+  const RETURN_DURATION = 600;
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function animate(ts) {
+    if (!factoryState.isRunning || !factoryState.isVisible) {
+      requestAnimationFrame(animate);
+      return;
+    }
+    requestAnimationFrame(animate);
+    const elapsed = ts - lastFrame;
+    if (elapsed < frameInterval) return;
+    lastFrame = ts - (elapsed % frameInterval);
+
+    // === 更新 holdProgress ===
+    if (factoryState.isHolding) {
+      const held = ts - factoryState.holdStartTime;
+      factoryState.holdProgress = Math.min(1, held / HOLD_DURATION);
+      factoryState.isReturning = false;
+    } else if (factoryState.isReturning) {
+      const retElapsed = ts - factoryState.returnStartTime;
+      const t = Math.min(1, retElapsed / RETURN_DURATION);
+      factoryState.holdProgress = factoryState.returnStartValue * (1 - easeOutCubic(t));
+      if (t >= 1) {
+        factoryState.holdProgress = 0;
+        factoryState.isReturning = false;
+        // 舞台中央文案延迟淡出
+        if (stageHint) {
+          stageHint.style.transition = 'opacity 0.5s ease';
+          stageHint.style.opacity = '0';
+        }
+      }
+    }
+    updateHoldUI(factoryState.holdProgress);
+
+    // === 批次 4: 帧率检测与自动降级 ===
+    if (!factoryState.perfMonitor) {
+      factoryState.perfMonitor = {
+        frameTime: performance.now(),
+        fps: 60,
+        fpsHistory: [],
+        currentTier: perfTier,
+        degradeCount: 0
+      };
+    }
+    
+    // 计算 FPS
+    const now = performance.now();
+    const delta = now - factoryState.perfMonitor.frameTime;
+    factoryState.perfMonitor.frameTime = now;
+    const instantFPS = delta > 0 ? 1000 / delta : 60;
+    
+    // 滑动平均 FPS
+    factoryState.perfMonitor.fpsHistory.push(instantFPS);
+    if (factoryState.perfMonitor.fpsHistory.length > 30) {
+      factoryState.perfMonitor.fpsHistory.shift();
+    }
+    const avgFPS = factoryState.perfMonitor.fpsHistory.reduce((a, b) => a + b, 0) / factoryState.perfMonitor.fpsHistory.length;
+    factoryState.perfMonitor.fps = avgFPS;
+    
+    // 连续低帧率时降级
+    if (avgFPS < 25 && factoryState.perfMonitor.currentTier === 'high') {
+      factoryState.perfMonitor.degradeCount++;
+      if (factoryState.perfMonitor.degradeCount > 60) { // 连续 60 帧低于 25fps
+        console.warn('[Factory] Auto-degrading: high → medium');
+        factoryState.perfMonitor.currentTier = 'medium';
+        // 减少粒子数量需要重新初始化场景，这里仅记录降级状态
+      }
+    } else if (avgFPS < 20 && factoryState.perfMonitor.currentTier === 'medium') {
+      factoryState.perfMonitor.degradeCount++;
+      if (factoryState.perfMonitor.degradeCount > 60) {
+        console.warn('[Factory] Auto-degrading: medium → low');
+        factoryState.perfMonitor.currentTier = 'low';
+      }
+    } else if (avgFPS > 45 && factoryState.perfMonitor.degradeCount > 0) {
+      // 性能恢复时逐步恢复
+      factoryState.perfMonitor.degradeCount = Math.max(0, factoryState.perfMonitor.degradeCount - 2);
+    }
+    
+    // 每 5 秒输出一次 FPS
+    if (Math.floor(now / 5000) !== Math.floor((now - delta) / 5000)) {
+      console.log(`[Factory] FPS: ${avgFPS.toFixed(1)}, Tier: ${factoryState.perfMonitor.currentTier}`);
+    }
+
+    // === Batch 2: 更新交互系统 ===
+    if (window.FactoryInteraction) {
+      FactoryInteraction.update(factoryState.holdProgress);
+    }
+
+    // === 统一状态更新 ===
+    updateFactoryState();
+
+    // === 计算实际速度 ===
+    const effectiveSpeed = BASE_SPEED * factoryState.speedMultiplier;
+
+    // === 蒸汽更新 ===
+    const steamMultiplier = 1 + factoryState.currentSteamIntensity * 3;
+    for (let i = 0; i < STEAM_COUNT; i++) {
+      const p = steamParticles[i];
+      p.life += 0.008 * steamMultiplier;
+      if (p.life >= 1) { resetSteamParticle(p, i); continue; }
+      p.x += p.vx * steamMultiplier;
+      p.y += p.vy * steamMultiplier;
+      p.z += p.vz;
+      steamPositions[i * 3] = p.x;
+      steamPositions[i * 3 + 1] = p.y;
+      steamPositions[i * 3 + 2] = p.z;
+    }
+    steamGeo.attributes.position.needsUpdate = true;
+    steamMat.opacity = 0.3 + factoryState.currentSteamIntensity * 0.5;
+
+    // === 炉膛发光 ===
+    ovenGlow.intensity = 0.12 + factoryState.currentOvenGlow * 0.9;
+    ovenGlow.color.setHSL(0.08 - factoryState.holdProgress * 0.03, 0.9, 0.5);
+
+    // === 传送带动画（统一振动避免穿模） ===
+    // 计算统一的基础 Y 位置（传送带 + 振动）
+    const beltVib = factoryState.currentBeltVibration;
+    const beltY = -0.55 + Math.sin(ts * 0.012) * beltVib;
+    
+    // 传送带主体和线条使用相同的 Y 位置
+    belt.position.y = beltY;
+    beltLines.position.x = (beltLines.position.x + effectiveSpeed * (1 + factoryState.holdProgress * 0.5)) % 1.4;
+    beltLines.position.y = beltY;
+
+    // === 面包更新（需要跟随传送带 Y 位置） ===
+    breads.forEach(b => b.update(effectiveSpeed, mouseWorld, factoryState.holdProgress + factoryState.currentBreadColorShift * 0.4, beltY));
+
+    // === 自动化辉光 ===
+    if (factoryState.currentAutomationGlow > 0.01) {
+      beltMat.emissive.setHex(0x5D8E62);
+      beltMat.emissiveIntensity = factoryState.currentAutomationGlow * 0.25;
+    } else {
+      beltMat.emissiveIntensity = 0;
+    }
+
+    // === 保鲜雾化 ===
+    if (factoryState.currentFreshnessFog > 0.05) {
+      scene.fog = scene.fog || new THREE.Fog(0x0E0904, 8, 20);
+      scene.fog.density = factoryState.currentFreshnessFog * 0.1;
+    } else {
+      scene.fog = null;
+    }
+
+    // === 相机轻微摆动 ===
+    camera.position.x = Math.sin(ts * 0.0003) * 0.3 + Math.sin(ts * 0.0007) * factoryState.currentBeltVibration * 0.5;
+    camera.lookAt(0, 0, 0);
+
+    // === 渲染（带错误处理）===
+    try {
+      renderer.render(scene, camera);
+    } catch (e) {
+      console.error('[Factory] Render error:', e);
+      // 出错时尝试恢复渲染器
+      try {
+        renderer.dispose();
+        const newRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+        newRenderer.setSize(width, height);
+        // 交换渲染器
+        Object.assign(renderer, newRenderer);
+      } catch (recoverError) {
+        console.error('[Factory] Cannot recover renderer:', recoverError);
+        cancelAnimationFrame(animationId);
+      }
+    }
+  }
+
+  // === 离屏暂停（修复生命周期） ===
+  const obs = new IntersectionObserver(entries => {
+    const isIntersecting = entries[0].isIntersecting;
+    factoryState.isVisible = isIntersecting;
+    if (isIntersecting) {
+      // 恢复运行时重置帧时间，避免时间跳跃
+      lastFrame = performance.now();
+    }
+  }, { threshold: 0.1 });
+  obs.observe(container);
+
+  // === 四卡片点击交互（演示模式） ===
+  const chips = document.querySelectorAll('.f-chip');
+  const MODE_MAP = ['temp', 'speed', 'automation', 'fresh'];
+  const MODE_LABELS = ['温度模式', '速度模式', '自动化模式', '保鲜模式'];
+
+  function setCardActive(index) {
+    chips.forEach((chip, i) => {
+      const isActive = i === index;
+      chip.classList.toggle('is-active', isActive);
+      if (isActive) {
+        chip.style.borderColor = 'rgba(232,169,58,0.75)';
+        chip.style.boxShadow = '0 0 24px rgba(192,123,26,0.4), inset 0 0 16px rgba(192,123,26,0.12)';
+        chip.style.background = 'rgba(192,123,26,0.18)';
+        // 激活时显示模式标签
+        const statusEl = chip.querySelector('.f-chip-status');
+        if (statusEl) {
+          statusEl.textContent = MODE_LABELS[i].replace('模式', '中');
+          statusEl.style.color = '#E8A93A';
+        }
+      } else {
+        chip.style.borderColor = '';
+        chip.style.boxShadow = '';
+        chip.style.background = '';
+        // 恢复默认状态标签
+        const statusEl = chip.querySelector('.f-chip-status');
+        const defaultStatus = ['live', 'stable', 'verified', 'monitoring'][i];
+        if (statusEl) {
+          statusEl.textContent = defaultStatus;
+          statusEl.style.color = '';
+        }
+      }
+    });
+    factoryState.activeCardIndex = index;
+  }
+
+  function handleCardClick(index) {
+    // 二次点击同卡 → 恢复 auto
+    if (factoryState.activeCardIndex === index) {
+      factoryState.mode = 'auto';
+      factoryState.speedMultiplier = 1.0;
+      setCardActive(-1);
+      console.log('[factory] 恢复 AUTO 模式');
+      return;
+    }
+
+    // 激活对应模式
+    factoryState.mode = MODE_MAP[index];
+    factoryState.activeCardIndex = index;
+    setCardActive(index);
+    console.log('[factory] 演示模式:', MODE_MAP[index], MODE_LABELS[index]);
+  }
+
+  // 绑定点击事件
+  chips.forEach((chip, i) => {
+    chip.style.cursor = 'pointer';
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleCardClick(i);
+    });
+    chip.setAttribute('tabindex', '0');
+    chip.setAttribute('role', 'button');
+    chip.setAttribute('aria-label', `卡片 ${i + 1} - 点击切换${MODE_LABELS[i]}`);
+    chip.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleCardClick(i);
+      }
+    });
+  });
+  // === 响应式 ===
+  function onResize() {
+    const w = container.clientWidth, h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+  window.addEventListener('resize', onResize);
+
+  // === Batch 2: 初始化 Factory 交互系统 ===
+  if (window.FactoryInteraction) {
+    FactoryInteraction.init({
+      onStageChange: (newStage, oldStage) => {
+        console.log(`[FactoryInteraction] Stage change: ${oldStage} → ${newStage}`);
+
+        // 播放阶段切换提示音
+        if (newStage === 'golden') {
+          if (global.AudioManager) {
+            AudioManager.playGolden();
+          }
+        }
+      },
+      onFeedbackUpdate: (feedback) => {
+        // 更新视觉反馈到 factoryState
+        factoryState.targetOvenGlow = feedback.ovenGlowScaled || 0;
+        factoryState.targetSteamIntensity = feedback.steamScaled || 0;
+        // 任务D1: 存储 boost 强度用于视觉增强
+        factoryState.boostIntensity = feedback.boostIntensity || 0;
+      }
+    });
+
+    // 任务D1: 在渲染循环中应用 boost 效果
+    const originalUpdateFactoryState = updateFactoryState;
+    updateFactoryState = function() {
+      originalUpdateFactoryState();
+      
+      // 任务D1: 应用 boost 增强
+      if (factoryState.boostIntensity > 0) {
+        const boostFactor = 1 + factoryState.boostIntensity * 0.35;
+        factoryState.currentOvenGlow *= boostFactor;
+        factoryState.currentSteamIntensity *= boostFactor;
+      }
+    };
+
+    // 将交互更新接入长按处理
+    const originalOnPointerDown = onPointerDown;
+    onPointerDown = function(e) {
+      FactoryInteraction.handleFirstInteraction();
+      originalOnPointerDown && originalOnPointerDown.call(this, e);
+    };
+  }
+
+  // === 调试日志 ===
+  console.log('[factory] init');
+  console.log('[factory] chips', document.querySelectorAll('.f-chip').length);
+  console.log('[factory] canvas', !!document.getElementById('factory-canvas'));
+
+  // === 调试开关 ===
+  window.__FACTORY_DEBUG__ = {
+    getState: () => ({ ...factoryState }),
+    setMode: (m) => {
+      factoryState.mode = m;
+      const modeIndex = MODE_MAP.indexOf(m);
+      if (modeIndex >= 0) {
+        setCardActive(modeIndex);
+      } else {
+        setCardActive(-1);
+      }
+    },
+    setHoldProgress: (p) => {
+      factoryState.holdProgress = Math.max(0, Math.min(1, p));
+    },
+    getModes: () => Object.keys(DEMO_MODES),
+  };
+
+    // Batch 1: 启动动画循环
+    animate(performance.now());
+  }  // end initFactoryScene
+
+})();
+
+/* ---- 7. Journey Particles Background (Ambient Atmosphere) ---- */
+(function() {
+  const canvas = document.getElementById('journey-particles');
+  if (!canvas) return;
+
+  // === 性能检测 & 无障碍 ===
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isLowPerf = window.innerWidth < 768 || 
+                    (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) ||
+                    /Android|iPhone|iPad/.test(navigator.userAgent);
+  
+  if (isLowPerf || prefersReducedMotion) {
+    canvas.style.display = 'none';
+    return;
+  }
+
+  // === 轻量配置（不影响文字可读性） ===
+  const CONFIG = {
+    particleCount: 60,        // 轻量粒子数
+    particleColor: '#C8861A',
+    size: { min: 0.8, max: 2.2 },
+    speed: { x: 0.08, y: 0.04 },
+    opacity: 0.25,            // 更低透明度
+    mouseInfluence: 0.05,     // 极轻微鼠标影响
+    targetFPS: 24             // 低帧率节流
+  };
+
+  const ctx = canvas.getContext('2d');
+  const container = canvas.parentElement;
+  
+  let width, height;
+  let particles = [];
+  let mouse = { x: -1000, y: -1000 };
+  let isRunning = true;
+  let animationId;
+  let lastFrameTime = 0;
+  const frameInterval = 1000 / CONFIG.targetFPS;
+
+  function resize() {
+    width = canvas.width = container.clientWidth;
+    height = canvas.height = container.clientHeight;
+  }
+
+  class Particle {
+    constructor() {
+      this.reset(true);
+    }
+
+    reset(initial = false) {
+      this.x = initial ? Math.random() * width : width + 50;
+      this.y = Math.random() * height;
+      this.size = CONFIG.size.min + Math.random() * (CONFIG.size.max - CONFIG.size.min);
+      this.speedX = CONFIG.speed.x * (0.5 + Math.random() * 0.8);
+      this.speedY = (Math.random() - 0.5) * CONFIG.speed.y;
+      this.opacity = CONFIG.opacity * (0.4 + Math.random() * 0.6);
+      this.fadeIn = 0;
+    }
+
+    update() {
+      // 水平漂浮
+      this.x -= this.speedX;
+      this.y += Math.sin(this.x * 0.01) * 0.3 + this.speedY;
+
+      // 极轻鼠标扰动（不干扰文字区）
+      const dx = this.x - mouse.x;
+      const dy = this.y - mouse.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 100 && dist > 0) {
+        const force = (100 - dist) / 100 * CONFIG.mouseInfluence;
+        this.x += dx * force * 0.3;
+        this.y += dy * force * 0.3;
+      }
+
+      // 淡入
+      if (this.fadeIn < 1) this.fadeIn = Math.min(1, this.fadeIn + 0.02);
+
+      // 循环
+      if (this.x < -10) this.reset();
+    }
+
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200, 134, 26, ${this.opacity * this.fadeIn})`;
+      ctx.fill();
+    }
+  }
+
+  function initParticles() {
+    particles = [];
+    for (let i = 0; i < CONFIG.particleCount; i++) {
+      particles.push(new Particle());
+    }
+  }
+
+  function animate(timestamp) {
+    if (!isRunning) return;
+    
+    animationId = requestAnimationFrame(animate);
+
+    const elapsed = timestamp - lastFrameTime;
+    if (elapsed < frameInterval) return;
+    lastFrameTime = timestamp - (elapsed % frameInterval);
+
+    // 极淡拖尾（不影响文字）
+    ctx.fillStyle = 'rgba(20, 13, 4, 0.12)';
+    ctx.fillRect(0, 0, width, height);
+
+    particles.forEach(p => {
+      p.update();
+      p.draw();
+    });
+  }
+
+  container.addEventListener('mousemove', (e) => {
+    const rect = container.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
+  });
+
+  container.addEventListener('mouseleave', () => {
+    mouse.x = -1000;
+    mouse.y = -1000;
+  });
+
+  // === IntersectionObserver 离屏暂停 ===
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        if (!isRunning) {
+          isRunning = true;
+          animate(performance.now());
+        }
+      } else {
+        isRunning = false;
+        if (animationId) cancelAnimationFrame(animationId);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  resize();
+  initParticles();
+  observer.observe(container);
+  animate(performance.now());
+
+  window.addEventListener('resize', () => {
+    resize();
+    particles.forEach(p => {
+      if (p.x > width) p.x = width;
+      if (p.y > height) p.y = Math.random() * height;
+    });
+  });
+})();
+
+/* ---- Journey step indicator ---- */
+const journeyText = document.getElementById('journey-text');
+const journeySteps = document.querySelectorAll('.journey-step');
+const journeyImages = document.querySelectorAll('.journey-img');
+const journeyDots = document.querySelectorAll('.jp-dot');
+const journeyNavItems = document.querySelectorAll('.jsn-item');
+
+function updateJourneyStep(index) {
+  journeySteps.forEach((step, i) => step.classList.toggle('active', i === index));
+  journeyImages.forEach((img, i) => img.classList.toggle('active', i === index));
+  journeyDots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+  journeyNavItems.forEach((item, i) => item.classList.toggle('active', i === index));
+}
+
+// Initialize first step
+updateJourneyStep(0);
+
+/* ---- 9. Product Canvas Tear Effect (Experimental) ---- */
+(function() {
+  // === 实验开关：设为 false 可关闭 ===
+  const EXPERIMENTAL_TEAR_ENABLED = false;
+
+  if (!EXPERIMENTAL_TEAR_ENABLED) {
+    console.log('Product tear effect: disabled (set EXPERIMENTAL_TEAR_ENABLED = true to enable)');
+    return;
+  }
+
+  // === 性能检测 ===
+  const isLowPerf = window.innerWidth < 768 || 
+                    navigator.hardwareConcurrency < 4 ||
+                    /Android|iPhone|iPad/.test(navigator.userAgent);
+  
+  if (isLowPerf) {
+    console.log('Product tear effect: skipped for low-performance device');
+    return;
+  }
+
+  // === 配置 ===
+  const CONFIG = {
+    tearSpeed: 0.04,        // 撕裂速度
+    maxRadius: 150,          // 最大撕裂半径
+    backgroundColor: '#F2EAD8', // 背景色（奶油色）
+    crinkleCount: 12        // 褶皱线条数量
+  };
+
+  const prodCards = document.querySelectorAll('.prod-card');
+
+  prodCards.forEach(card => {
+    const prodImg = card.querySelector('.prod-img');
+    if (!prodImg) return;
+
+    // 创建 canvas
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = `
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 3;
+      pointer-events: none;
+    `;
+    prodImg.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+
+    let isHovered = false;
+    let tearProgress = 0;
+    let animationId;
+    let centerX, centerY;
+
+    function resizeCanvas() {
+      const rect = prodImg.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      centerX = canvas.width / 2;
+      centerY = canvas.height / 2;
+    }
+
+    function drawTear(progress) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      if (progress <= 0) return;
+
+      const radius = progress * CONFIG.maxRadius;
+
+      // 绘制不规则撕裂边缘
+      ctx.save();
+      ctx.beginPath();
+      
+      const segments = 60;
+      for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        const noise = Math.sin(angle * CONFIG.crinkleCount) * 8;
+        const r = radius + noise;
+        const x = centerX + Math.cos(angle) * r;
+        const y = centerY + Math.sin(angle) * r;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      
+      ctx.closePath();
+      ctx.fillStyle = CONFIG.backgroundColor;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function animate() {
+      if (!isHovered && tearProgress <= 0) {
+        cancelAnimationFrame(animationId);
+        return;
+      }
+
+      animationId = requestAnimationFrame(animate);
+
+      if (isHovered && tearProgress < 1) {
+        tearProgress = Math.min(1, tearProgress + CONFIG.tearSpeed);
+      } else if (!isHovered && tearProgress > 0) {
+        tearProgress = Math.max(0, tearProgress - CONFIG.tearSpeed * 1.5);
+      }
+
+      drawTear(tearProgress);
+    }
+
+    card.addEventListener('mouseenter', () => {
+      isHovered = true;
+      resizeCanvas();
+      if (!animationId) animate();
+    });
+
+    card.addEventListener('mouseleave', () => {
+      isHovered = false;
+    });
+
+    card.addEventListener('mousemove', (e) => {
+      const rect = prodImg.getBoundingClientRect();
+      centerX = e.clientX - rect.left;
+      centerY = e.clientY - rect.top;
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+  });
+})();
+
+/* ============================================================
+   FX 调试接口
+   ============================================================ */
+// 运行时调试开关
+window.__FX_DEBUG__ = window.__FX_DEBUG__ || {};
+
+// 调试 API
+window.__haoshi = {
+  // 查看当前 FX 状态
+  status: function() {
+    if (typeof FXConfig !== 'undefined') {
+      console.log('%c[Haoshi FX Status]', 'color: #C07B1A; font-weight: bold');
+      var status = FXConfig.debug.getStatus();
+      console.table({
+        'Story FX': status.story.enabled ? 'Enabled' : 'Disabled',
+        'Products FX': status.products.enabled ? 'Enabled' : 'Disabled',
+        'Footer FX': status.footer.enabled ? 'Enabled' : 'Disabled',
+        'CTA FX': status.cta.enabled ? 'Enabled' : 'Disabled',
+        'Global FX': status.globalFX.enabled ? 'Enabled' : 'Disabled',
+        'Mobile': status.perf.isMobile ? 'Yes' : 'No',
+        'Reduced Motion': status.perf.prefersReduced ? 'Yes' : 'No',
+        'Low Perf': status.perf.isLowPerf ? 'Yes' : 'No'
+      });
+      if (typeof CursorFX !== 'undefined') {
+        var fx = CursorFX.getEffects();
+        console.log('%cActive Effects:', 'color: #5D8E62');
+        Object.keys(fx).forEach(function(key) {
+          console.log('  - ' + key + ': ' + (fx[key].active ? 'Active' : 'Inactive') + ' | handlers: ' + fx[key].handlerCount);
+        });
+      }
+      return status;
+    } else {
+      console.log('[Haoshi] FX Config not loaded');
+      return null;
+    }
+  },
+  
+  // 临时开关效果
+  toggle: function(effect, enabled) {
+    if (typeof FXConfig !== 'undefined') {
+      FXConfig.debug.toggle(effect, enabled);
+      console.log('[Haoshi] ' + effect + ' FX ' + (enabled ? 'enabled' : 'disabled'));
+    }
+  },
+  
+  // 启用所有效果
+  enableAll: function() {
+    ['story', 'products', 'footer', 'cta', 'global'].forEach(function(e) {
+      window.__haoshi.toggle(e, true);
+    });
+  },
+  
+  // 禁用所有效果
+  disableAll: function() {
+    ['story', 'products', 'footer', 'cta', 'global'].forEach(function(e) {
+      window.__haoshi.toggle(e, false);
+    });
+  },
+  
+  // 快速调参
+  tune: function(effect, param, value) {
+    if (typeof FXConfig !== 'undefined' && FXConfig[effect] && FXConfig[effect].hasOwnProperty(param)) {
+      var oldVal = FXConfig[effect][param];
+      FXConfig[effect][param] = value;
+      console.log('[Haoshi] ' + effect + '.' + param + ' = ' + value + ' (was ' + oldVal + ')');
+    }
+  },
+  
+  // 帮助信息
+  help: function() {
+    console.log('%c[Haoshi FX Debug API]', 'color: #C07B1A; font-weight: bold');
+    console.log('Usage:');
+    console.log('  __haoshi.status()      - 查看当前 FX 状态');
+    console.log('  __haoshi.toggle(e, v)  - 开关效果 (e: "story"|"products"|"footer"|"cta"|"global", v: true|false)');
+    console.log('  __haoshi.enableAll()   - 启用所有效果');
+    console.log('  __haoshi.disableAll()  - 禁用所有效果');
+    console.log('  __haoshi.tune(e,p,v)   - 调整参数 (e: "story"|"products"|"footer"|"cta", p: 参数名, v: 新值)');
+    console.log('');
+    console.log('Example:');
+    console.log('  __haoshi.toggle("products", false)  - 禁用产品页效果');
+    console.log('  __haoshi.tune("products", "sparkParticle.count", 50) - 增加产品页粒子数');
+    console.log('  __haoshi.tune("footer", "trail.opacity", {min:0.2, max:0.3}) - 调整 Footer 透明度');
+  }
+};
+
+// 自动显示帮助（如果启用了调试模式）
+if (window.__FX_DEBUG__.enabled) {
+  window.__haoshi.help();
+}
+
+</script>
+
+</body>
+</html>
