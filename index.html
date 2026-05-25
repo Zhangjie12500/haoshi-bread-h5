@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>豪士 HAOSHI — V3.35 Result Card Exit + Desc Fix</title>
+<title>豪士 HAOSHI — V3.53 Mobile Touch Fix + GLB Fallback</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,600&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -6399,17 +6399,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   }
 
-  // 卡片事件：pointerup（含 touch 兼容）
+  // 移动端 touchstart 直接触发（优先于延迟的 pointerup）
   cards.forEach(card => {
-    card.addEventListener('pointerup', function(e) {
-      e.preventDefault();
-      toggleCard(card);
-    });
-    // 兜底 touchend（防 pointerup 意外不触发）
-    card.addEventListener('touchend', function(e) {
-      if (e.target.closest('.ing-card') !== card) return;
+    card.addEventListener('touchstart', function(e) {
+      // 跳过标签按钮等子元素，只处理点击卡片本身
+      if (e.target.closest('.ing-name') || e.target.closest('.ing-desc') ||
+          e.target.closest('.ing-tag') || e.target.closest('.ing-emoji')) {
+        return;
+      }
       toggleCard(card);
     }, { passive: true });
+
+    // pointerup 兜底（PC / 部分 Android）
+    card.addEventListener('pointerup', function(e) {
+      e.preventDefault();
+    });
   });
 
   // 单例：点击卡片外关闭
@@ -7016,8 +7020,8 @@ reveals.forEach(el => revealObs.observe(el));
 
     // V3.51: 食材数据必须在 sceneReady 阶段之前初始化（避免 TDZ 错误）
     const INGREDIENT_DATA = {
-      wheat:  { name: '高筋小麦', origin: '河套平原\n产地直采', tags: ['蛋白质 ≥13%', '无农残检测', '当季新粮'], glb: 'wheat_bundle.glb', webp: null },
-      flour:  { name: '精制面粉', origin: '内蒙古\n石磨研磨', tags: ['灰分 ≤0.55%', '湿面筋 ≥30%', '零漂白'], glb: 'flour_sack.glb', webp: null },
+      wheat:  { name: '高筋小麦', origin: '河套平原\n产地直采', tags: ['蛋白质 ≥13%', '无农残检测', '当季新粮'], glb: 'wheat_bundle.glb', webp: 'assets/factory3d/refs/wheat_bundle.webp' },
+      flour:  { name: '精制面粉', origin: '内蒙古\n石磨研磨', tags: ['灰分 ≤0.55%', '湿面筋 ≥30%', '零漂白'], glb: 'flour_sack.glb', webp: 'assets/factory3d/refs/flour_sack.webp' },
       milk:   { name: '鲜全脂牛奶', origin: '新西兰进口\n72h冷链', tags: ['脂肪 ≥3.5%', '非复原乳', '每日鲜采'], glb: null, webp: 'assets/factory3d/refs/milk_bottle.webp' },
       egg:    { name: '农场鲜鸡蛋', origin: '山东寿光\n散养土鸡', tags: ['Ω-3强化', '无激素', '48h内入厂'], glb: 'egg_crate.glb', webp: null },
       butter: { name: '天然黄油', origin: '法国诺曼底\n原装进口', tags: ['乳脂 ≥82%', '无氢化', 'AOP认证'], glb: 'butter_block.glb', webp: null },
@@ -7724,10 +7728,11 @@ reveals.forEach(el => revealObs.observe(el));
     // 【V3.29】贴图映射 - 按真实文件名接入具象化资源
     // V3.43: 统一 wheat 贴图路径
     const textureMap = {
-      wheat: 'assets/factory3d/refs/wheat_bundle.webp',
-      flour: 'assets/factory3d/refs/flour_sack.webp',
-      milk:  'assets/factory3d/refs/milk_bottle.webp',
-      egg:   'assets/factory3d/refs/egg_crate.webp'
+      wheat:  'assets/factory3d/refs/wheat_bundle.webp',
+      flour:  'assets/factory3d/refs/flour_sack.webp',
+      milk:   'assets/factory3d/refs/milk_bottle.webp',
+      egg:    'assets/factory3d/refs/egg_crate.webp',
+      butter: 'assets/factory3d/refs/butter_block.webp'
     };
 
     const texPath = textureMap[key];
@@ -7736,10 +7741,14 @@ reveals.forEach(el => revealObs.observe(el));
 
     if (texPath) {
       try {
-        const loader = new THREE.TextureLoader();
-        texture = loader.load(texPath);
-        texture.flipY = false;
-        useTexture = true;
+    const loader = new THREE.TextureLoader();
+    texture = loader.load(texPath, (tex) => {
+      // onLoad callback - texture ready
+    }, undefined, (err) => {
+      console.warn(`[Factory] Texture load failed for ${key}: ${texPath}`, err);
+    });
+    texture.flipY = false;
+    useTexture = true;
       } catch (e) {
         console.log(`[Factory] V3.29 Texture not found for ${key}`);
       }
@@ -8740,8 +8749,10 @@ reveals.forEach(el => revealObs.observe(el));
       (err) => {
         showcase.glbLoading.delete(key);
         console.warn(`[Showcase] GLB load failed: ${data.glb}`, err);
-        if (data.webp || INGREDIENT_DATA[key].webp) {
-          createBillboardShowcase(key, data.webp || `assets/factory3d/refs/${key}.webp`);
+        const fallbackWebp = data.webp || `assets/factory3d/refs/${key}_bundle.webp`;
+        if (fallbackWebp) {
+          console.log(`[Showcase] Falling back to webp: ${fallbackWebp}`);
+          createBillboardShowcase(key, fallbackWebp);
         }
       }
     );
