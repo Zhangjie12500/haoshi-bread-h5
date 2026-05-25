@@ -250,13 +250,18 @@
      * 当自动播放失败后，通过用户交互激活
      */
     async handleFirstInteraction() {
-      // 如果已经成功自动播放，不再处理
       if (AudioState.autoPlaySuccess) {
         console.log('[Audio] Auto-play already succeeded, skipping interaction handling');
         return;
       }
 
       if (AudioState.armed) return;
+
+      // V3.52 fix: init 未完成时不操作，避免 bgmAudio 为 null
+      if (!isInitialized || !bgmAudio) {
+        console.warn('[Audio] handleFirstInteraction called before init, skipping');
+        return;
+      }
 
       console.log('[Audio] First interaction detected, arming audio...');
       AudioState.armed = true;
@@ -266,23 +271,18 @@
         return;
       }
 
-      // 延迟激活，等待用户操作完成
       await sleep(AudioConfig.activateDelay);
 
-      // 解除静音
       bgmAudio.muted = false;
       AudioState.muted = false;
 
-      // 尝试播放
       try {
         await bgmAudio.play();
-        // 淡入
         await fadeIn(bgmAudio, AudioConfig.bgm.volume, AudioConfig.bgm.fadeInDuration);
         AudioState.active = true;
         console.log('[Audio] BGM activated and playing');
       } catch (e) {
         console.warn('[Audio] Cannot play BGM:', e);
-        // 可能需要用户再次交互
       }
     },
 

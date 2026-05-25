@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sitemap for 豪士面包静态站
+  生成工具：https://www.xml-sitemaps.com/
+  或使用脚本：npx @quhao/sitemap-generator
+  
+  【重要】上线前请替换以下占位符：
+  - haoshi.example.com → 实际域名
+  - 2026-05-17 → 实际最后修改日期
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+  
+  <!-- 首页 -->
+  <url>
+    <loc>https://haoshi.example.com/</loc>
+    <lastmod>2026-05-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- 最新版本页面 -->
+  <url>
+    <loc>https://haoshi.example.com/豪士面包V1.3.html</loc>
+    <lastmod>2026-05-17</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- 
+    【重要】以下是锚点链接，无需独立sitemap条目
+    如果将来扩展为多页面站，请在此添加对应条目
+    
+    锚点页面：
+    - #hero (首页Hero区)
+    - #journey-section (品牌旅程)
+    - #ingredients (原料溯源)
+    - #factory (工厂可视化)
+    - #products (产品展示)
+    - #story-section (品牌故事)
+    - #cta (行动召唤)
+  -->
+  
+  <!-- 
+    示例：将来扩展的多页面
+    <url>
+      <loc>https://haoshi.example.com/products.html</loc>
+      <lastmod>2026-05-17</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.8</priority>
+    </url>
+    <url>
+      <loc>https://haoshi.example.com/about.html</loc>
+      <lastmod>2026-05-17</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.7</priority>
+    </url>
+  -->
+  
+</urlset>

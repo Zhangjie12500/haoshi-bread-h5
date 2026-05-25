@@ -20,8 +20,8 @@
       weights: [300, 400, 600, 700],
       // Google Fonts URL（用于预加载）
       googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&display=swap',
-      // 本地子集字体路径（未来替换）
-      subsetPath: 'assets/fonts/ui-cn-title-subset.woff2',
+      // V3.51: 使用已存在的本地字体（子集字体制备后替换）
+      subsetPath: 'assets/fonts/noto-serif-sc-chinese-simplified-500-normal.woff2',
       // 字符子集（用于生成子集字体）
       subsetChars: '松软金黄焦香上下滑动点击工位长按移动操作提示火候上升已进入窗口偏快偏慢关闭'
     },
@@ -32,7 +32,7 @@
       displayName: 'Inter',
       weights: [300, 400, 500],
       googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap',
-      subsetPath: 'assets/fonts/ui-num-subset.woff2',
+      subsetPath: 'assets/fonts/noto-sans-sc-chinese-simplified-500-normal.woff2',
       // 数字字符集
       subsetChars: '0123456789.-:%'
     },

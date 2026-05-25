@@ -21,6 +21,23 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# 旧版本HTML归档（不上传）
+archive/
+豪士面包V*.html
+
+# 临时文件
+.tmp*/
+*.bat
+
+# 本地开发文档（不上传）
+CHECKLIST.md
+DEPLOYMENT_GUIDE.md
+DUTY_PLAN.md
+MONITORING.md
+MONITORING_CONFIG.md
+ROLLOUT_SOP.md
+nginx.conf
+
 # Temporary files
 *.tmp
 *.temp

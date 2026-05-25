@@ -210,8 +210,8 @@
       // UI 图标
       () => loadWithRetry('assets/ui/icon-sound-on.svg', 'image'),
       () => loadWithRetry('assets/ui/speaker-cross-svgrepo-com.svg', 'image'),
-      // Hero 图片
-      () => loadWithRetry('assets/hero/hs_hero_toast_closeup_still_ai_v01.jpg', 'image'),
+      // Hero 图片（V3.51: 静态图不存在，依赖视频帧；移除避免 404）
+      // () => loadWithRetry('assets/hero/hs_hero_toast_closeup_still_ai_v01.jpg', 'image'),
       // Journey 图片
       () => loadWithRetry('assets/journey/stage-1-dough.jpg', 'image'),
       () => loadWithRetry('assets/journey/stage-2-rising.jpg', 'image'),
