@@ -223,12 +223,12 @@
       () => loadWithRetry('assets/ingredient/egg.webp', 'image'),
       () => loadWithRetry('assets/ingredient/yeast.webp', 'image'),
       // Product 图片
-      () => loadWithRetry('assets/product/toast.png', 'image'),
-      () => loadWithRetry('assets/product/softbun.png', 'image'),
-      () => loadWithRetry('assets/product/lacto.png', 'image'),
-      () => loadWithRetry('assets/product/wholewheat.png', 'image'),
-      () => loadWithRetry('assets/product/sandwich.png', 'image'),
-      () => loadWithRetry('assets/product/quinoa.png', 'image')
+      () => loadWithRetry('assets/product/toast.webp', 'image'),
+      () => loadWithRetry('assets/product/softbun.webp', 'image'),
+      () => loadWithRetry('assets/product/lacto.webp', 'image'),
+      () => loadWithRetry('assets/product/wholewheat.webp', 'image'),
+      () => loadWithRetry('assets/product/sandwich.webp', 'image'),
+      () => loadWithRetry('assets/product/quinoa.webp', 'image')
     ];
 
     // 设置总进度数
@@ -320,7 +320,7 @@
       // Story 图片
       () => loadWithRetry('assets/story/factory-1995.jpg', 'image'),
       // Social QR
-      () => loadWithRetry('assets/social/qr.png', 'image')
+      () => loadWithRetry('assets/social/qr.webp', 'image')
     ];
 
     // 更新总进度数
