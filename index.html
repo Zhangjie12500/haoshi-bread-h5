@@ -230,6 +230,22 @@
         );
       }
     }, 400);
+
+    // V3.95: 整面可点击 — 点击 loader-svg-wrap 或 loaderEl 任意处都能触发加载
+    loaderEl.addEventListener('click', function(e) {
+      if (loaderDone) return;
+      // 防止重复触发
+      if (tlWire.isActive() && !tlWire.paused()) return;
+      // 点击事件传播到 promptEl 时会由 promptEl 的专属 handler 处理，这里只处理空白区域的点击
+      if (e.target.closest('.loader-prompt')) return;
+      // 空白区域点击：触发 loader 继续
+      if (promptEl) {
+        promptEl.classList.add('hidden');
+        if (window.AudioManager) window.AudioManager.playSFX('click');
+        tlCount.play();
+        tlWire.play();
+      }
+    });
   }
 
   function finishLoader() {
@@ -1741,11 +1757,13 @@ nav.scrolled {
 #hero-loader .loader-svg-wrap {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
 }
 #hero-loader .loader-svg-wrap svg {
   width: min(92vw, 420px);
   height: auto;
   max-height: 85vh;
+  pointer-events: none;
 }
 #hero-loader .wire-line {
   fill: none;
@@ -2890,9 +2908,10 @@ nav.scrolled {
 }
 
 /* 移动端调整 - V3.82: z-index 100 与 journey-visual(z-index:1) 同在 journey stacking context，足以覆盖 */
+/* V3.95: journey-glass-card bottom 修正为 -10px */
 @media (max-width: 600px) {
   .journey-glass-card {
-    bottom: 120px;
+    bottom: -10px;
     width: calc(100vw - 2rem);
     z-index: 100;
   }
@@ -2955,6 +2974,45 @@ nav.scrolled {
   align-items: center;
   justify-content: center;
   flex-direction: column;
+}
+/* V3.95: 收起详情按钮 — 玻璃卡片右下角 */
+.glass-card-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 0.5px solid rgba(192, 123, 26, 0.12);
+}
+.glass-card-collapse-btn {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(192, 123, 26, 0.55);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  transition: color 0.2s ease, background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.glass-card-collapse-btn:hover,
+.glass-card-collapse-btn:active {
+  color: rgba(232, 169, 58, 0.9);
+  background: rgba(192, 123, 26, 0.08);
+}
+.glass-card-collapse-btn::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  margin-right: 0.35rem;
+  vertical-align: middle;
 }
 .glass-card-viz {
   width: 100%;
@@ -6532,7 +6590,7 @@ button:focus-visible,
 
           <!-- 图片层 -->
           <div class="journey-img j-img-1 active" id="jimg-0">
-            <img src="assets/journey/stage-1-dough.jpg" alt="生面团" style="width:100%;height:100%;object-fit:cover;" loading="eager" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <img src="assets/journey/stage-1-dough.webp" alt="揉制面团" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
             <svg style="display:none;position:absolute;width:100%;height:100%;" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
               <ellipse cx="100" cy="120" rx="70" ry="50" fill="rgba(250,246,238,0.1)" stroke="rgba(250,246,238,0.2)" stroke-width="1"/>
               <path d="M50 110 Q70 90 90 100 Q110 84 130 100 Q150 90 160 110" stroke="rgba(250,246,238,0.15)" stroke-width="1" fill="none"/>
@@ -6542,7 +6600,7 @@ button:focus-visible,
           </div>
 
           <div class="journey-img j-img-2" id="jimg-1">
-            <img src="assets/journey/stage-2-rising.jpg" alt="发酵膨胀" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <img src="assets/journey/stage-2-rising.webp" alt="发酵膨胀" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
             <svg style="display:none;position:absolute;width:100%;height:100%;" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
               <ellipse cx="100" cy="110" rx="60" ry="44" fill="rgba(250,246,238,0.1)" stroke="rgba(250,246,238,0.18)" stroke-width="1"/>
               <ellipse cx="100" cy="104" rx="50" ry="36" fill="rgba(250,246,238,0.06)"/>
@@ -6554,7 +6612,7 @@ button:focus-visible,
           </div>
 
           <div class="journey-img j-img-3" id="jimg-2">
-            <img src="assets/journey/stage-3-baking.jpg" alt="烘焙中" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <img src="assets/journey/stage-3-baking.webp" alt="烘焙中" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
             <svg style="display:none;position:absolute;width:100%;height:100%;" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
               <ellipse cx="100" cy="116" rx="64" ry="46" fill="rgba(250,246,238,0.12)" stroke="rgba(250,246,238,0.2)" stroke-width="1.2"/>
               <ellipse cx="100" cy="110" rx="56" ry="40" fill="rgba(200,134,26,0.08)" stroke="rgba(200,134,26,0.15)" stroke-width="0.8"/>
@@ -6566,7 +6624,7 @@ button:focus-visible,
           </div>
 
           <div class="journey-img j-img-4" id="jimg-3">
-            <img src="assets/journey/stage-4-done.jpg" alt="出炉成品" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <img src="assets/journey/stage-4-done.webp" alt="出炉成品" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
             <svg style="display:none;position:absolute;width:100%;height:100%;" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="30" y="80" width="140" height="70" rx="10" fill="rgba(250,246,238,0.12)" stroke="rgba(250,246,238,0.2)" stroke-width="1.2"/>
               <rect x="40" y="70" width="120" height="20" rx="6" fill="rgba(250,246,238,0.08)" stroke="rgba(250,246,238,0.15)" stroke-width="0.8"/>
@@ -6628,6 +6686,9 @@ button:focus-visible,
                   <div class="viz-label">4 种原料 → 1 份诚意</div>
                 </div>
               </div>
+              <div class="glass-card-collapse">
+                <button class="glass-card-collapse-btn" data-action="collapse" aria-label="收起详情">收起详情</button>
+              </div>
             </div>
           </div>
 
@@ -6677,6 +6738,9 @@ button:focus-visible,
                     <text class="viz-time" x="10" y="65" font-family="var(--mono,'DM Mono')" font-size="7" fill="rgba(232,169,58,0.7)">45 分钟恒温发酵</text>
                   </svg>
                 </div>
+              </div>
+              <div class="glass-card-collapse">
+                <button class="glass-card-collapse-btn" data-action="collapse" aria-label="收起详情">收起详情</button>
               </div>
             </div>
           </div>
@@ -6731,6 +6795,9 @@ button:focus-visible,
                   </svg>
                   <div class="viz-label">220°C 隧道炉 · 美拉德反应</div>
                 </div>
+              </div>
+              <div class="glass-card-collapse">
+                <button class="glass-card-collapse-btn" data-action="collapse" aria-label="收起详情">收起详情</button>
               </div>
             </div>
           </div>
@@ -6792,6 +6859,9 @@ button:focus-visible,
                   </svg>
                   <div class="viz-label">出炉即锁鲜 · 五大维度</div>
                 </div>
+              </div>
+              <div class="glass-card-collapse">
+                <button class="glass-card-collapse-btn" data-action="collapse" aria-label="收起详情">收起详情</button>
               </div>
             </div>
           </div>
@@ -6856,7 +6926,7 @@ button:focus-visible,
       <div class="ing-card-overlay"></div>
       <div class="ing-card-content">
         <div class="ing-emoji">
-          <img src="assets/ingredient/wheat.jpg" alt="高筋小麦粉" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <img src="assets/ingredient/wheat.webp" alt="高筋小麦粉" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
           <svg style="display:none;width:40px;height:40px;" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <ellipse cx="20" cy="25" rx="12" ry="10" stroke="rgba(192,123,26,0.5)" stroke-width="1.5" fill="rgba(192,123,26,0.08)"/>
             <path d="M12 22 Q16 18 20 20 Q24 16 28 22" stroke="rgba(192,123,26,0.4)" stroke-width="1" fill="none"/>
@@ -6873,7 +6943,7 @@ button:focus-visible,
       <div class="ing-card-overlay"></div>
       <div class="ing-card-content">
         <div class="ing-emoji">
-          <img src="assets/ingredient/milk.png" alt="新鲜全脂牛奶" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <img src="assets/ingredient/milk.webp" alt="新鲜全脂牛奶" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
           <svg style="display:none;width:40px;height:40px;" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <ellipse cx="20" cy="22" rx="8" ry="12" stroke="rgba(192,123,26,0.5)" stroke-width="1.5" fill="rgba(192,123,26,0.08)"/>
             <ellipse cx="20" cy="12" rx="4" ry="2" stroke="rgba(192,123,26,0.4)" stroke-width="1" fill="rgba(192,123,26,0.06)"/>
@@ -6889,7 +6959,7 @@ button:focus-visible,
       <div class="ing-card-overlay"></div>
       <div class="ing-card-content">
         <div class="ing-emoji">
-          <img src="assets/ingredient/egg.jpg" alt="新鲜鸡蛋" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <img src="assets/ingredient/egg.webp" alt="新鲜鸡蛋" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
           <svg style="display:none;width:40px;height:40px;" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <ellipse cx="20" cy="22" rx="10" ry="12" stroke="rgba(192,123,26,0.5)" stroke-width="1.5" fill="rgba(192,123,26,0.08)"/>
             <ellipse cx="20" cy="18" rx="6" ry="5" stroke="rgba(192,123,26,0.35)" stroke-width="1" fill="rgba(192,123,26,0.05)"/>
@@ -6906,7 +6976,7 @@ button:focus-visible,
       <div class="ing-card-overlay"></div>
       <div class="ing-card-content">
         <div class="ing-emoji">
-          <img src="assets/ingredient/yeast.jpg" alt="天然酵母" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <img src="assets/ingredient/yeast.webp" alt="天然酵母" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
           <svg style="display:none;width:40px;height:40px;" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="20" cy="20" r="10" stroke="rgba(192,123,26,0.5)" stroke-width="1.5" fill="rgba(192,123,26,0.08)"/>
             <circle cx="20" cy="20" r="5" stroke="rgba(192,123,26,0.35)" stroke-width="1" fill="rgba(192,123,26,0.05)"/>
@@ -7705,7 +7775,7 @@ const LINKS = {
   },
   // 社媒
   social: {
-    wechat: 'assets/social/qr.png',     // 微信二维码
+    wechat: 'assets/social/qr.webp',     // 微信二维码
     weibo: 'https://weibo.com/example',         // 微博
     douyin: 'https://douyin.com/example',       // 抖音
     xiaohongshu: 'https://xiaohongshu.com/example', // 小红书
@@ -8092,12 +8162,19 @@ window.addEventListener('scroll', () => {
       });
     });
 
-    // 查看详情按钮（每个 step 一个，事件委托）
+    // 查看详情按钮 + 收起详情按钮（V3.95：事件委托，支持新旧两种按钮）
     if (els.detailToggles.length) {
       els.detailToggles.forEach(btn => {
         btn.addEventListener('click', toggleDetail);
       });
     }
+    // V3.95: 玻璃卡片内的收起按钮，点击触发 toggleDetail
+    document.querySelectorAll('.glass-card-collapse-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleDetail();
+      });
+    });
 
     // ===== V3.70: 玻璃卡片可视化伪3D拖动 =====
     // 拖动 SVG 可视化时产生透视旋转，松开后回弹

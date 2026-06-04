@@ -213,15 +213,15 @@
       // Hero 图片（V3.51: 静态图不存在，依赖视频帧；移除避免 404）
       // () => loadWithRetry('assets/hero/hs_hero_toast_closeup_still_ai_v01.jpg', 'image'),
       // Journey 图片
-      () => loadWithRetry('assets/journey/stage-1-dough.jpg', 'image'),
-      () => loadWithRetry('assets/journey/stage-2-rising.jpg', 'image'),
-      () => loadWithRetry('assets/journey/stage-3-baking.jpg', 'image'),
-      () => loadWithRetry('assets/journey/stage-4-done.jpg', 'image'),
+      () => loadWithRetry('assets/journey/stage-1-dough.webp', 'image'),
+      () => loadWithRetry('assets/journey/stage-2-rising.webp', 'image'),
+      () => loadWithRetry('assets/journey/stage-3-baking.webp', 'image'),
+      () => loadWithRetry('assets/journey/stage-4-done.webp', 'image'),
       // Ingredient 图片
-      () => loadWithRetry('assets/ingredient/wheat.jpg', 'image'),
-      () => loadWithRetry('assets/ingredient/milk.png', 'image'),
-      () => loadWithRetry('assets/ingredient/egg.jpg', 'image'),
-      () => loadWithRetry('assets/ingredient/yeast.jpg', 'image'),
+      () => loadWithRetry('assets/ingredient/wheat.webp', 'image'),
+      () => loadWithRetry('assets/ingredient/milk.webp', 'image'),
+      () => loadWithRetry('assets/ingredient/egg.webp', 'image'),
+      () => loadWithRetry('assets/ingredient/yeast.webp', 'image'),
       // Product 图片
       () => loadWithRetry('assets/product/toast.png', 'image'),
       () => loadWithRetry('assets/product/softbun.png', 'image'),
