@@ -6,42 +6,35 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
-
 jobs:
-  build-and-deploy:
+  find-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Find latest Haoshi HTML file
+      - name: Find latest Haoshi HTML and write as index.html
         run: |
           # Find the highest version number HTML file (e.g. Haoshi_V0.22.html)
           FILE=$(ls Haoshi_V0*.html 2>/dev/null | sort -V | tail -n 1)
           if [ -z "$FILE" ]; then
-            echo "No Haoshi_V0*.html found!"
+            echo "ERROR: No Haoshi_V0*.html found in repo!"
             exit 1
           fi
-          echo "Deploying: $FILE"
-          echo "DEPLOY_FILE=$FILE" >> $GITHUB_ENV
+          echo "Using: $FILE"
           cp "$FILE" index.html
+          echo "DEPLOYED_VERSION=$FILE" >> $GITHUB_ENV
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Commit and push index.html
+        run: |
+          git config --local user.email "github-actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add index.html
+          git diff --cached --quiet && echo "No change to index.html, skipping commit" || \
+            git commit -m "ci: deploy ${{ env.DEPLOYED_VERSION }} as index.html [skip ci]"
+          git push
