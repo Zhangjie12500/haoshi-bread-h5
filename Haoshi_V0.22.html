@@ -230,6 +230,19 @@
         );
       }
     }, 400);
+
+    // V3.95: 整面可点击 — 点击 loader-svg-wrap 或 loaderEl 任意处都能触发加载
+    loaderEl.addEventListener('click', function(e) {
+      if (loaderDone) return;
+      if (tlWire.isActive() && !tlWire.paused()) return;
+      if (e.target.closest('.loader-prompt')) return;
+      if (promptEl) {
+        promptEl.classList.add('hidden');
+        if (window.AudioManager) window.AudioManager.playSFX('click');
+        tlCount.play();
+        tlWire.play();
+      }
+    });
   }
 
   function finishLoader() {
@@ -1741,11 +1754,13 @@ nav.scrolled {
 #hero-loader .loader-svg-wrap {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
 }
 #hero-loader .loader-svg-wrap svg {
   width: min(92vw, 420px);
   height: auto;
   max-height: 85vh;
+  pointer-events: none;
 }
 #hero-loader .wire-line {
   fill: none;
@@ -2890,9 +2905,10 @@ nav.scrolled {
 }
 
 /* 移动端调整 - V3.82: z-index 100 与 journey-visual(z-index:1) 同在 journey stacking context，足以覆盖 */
+/* V3.95: journey-glass-card bottom 修正为 -10px */
 @media (max-width: 600px) {
   .journey-glass-card {
-    bottom: 120px;
+    bottom: -10px;
     width: calc(100vw - 2rem);
     z-index: 100;
   }
@@ -2955,6 +2971,45 @@ nav.scrolled {
   align-items: center;
   justify-content: center;
   flex-direction: column;
+}
+/* V3.95: 收起详情按钮 — 玻璃卡片右下角 */
+.glass-card-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 0.5px solid rgba(192, 123, 26, 0.12);
+}
+.glass-card-collapse-btn {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(192, 123, 26, 0.55);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  transition: color 0.2s ease, background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.glass-card-collapse-btn:hover,
+.glass-card-collapse-btn:active {
+  color: rgba(232, 169, 58, 0.9);
+  background: rgba(192, 123, 26, 0.08);
+}
+.glass-card-collapse-btn::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  margin-right: 0.35rem;
+  vertical-align: middle;
 }
 .glass-card-viz {
   width: 100%;
@@ -6456,7 +6511,7 @@ button:focus-visible,
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
         onplay="this.muted=true;"
       >
-        <source src="assets/hero/hs_hero_toast_steam_loop_ai_v01.mp4" type="video/mp4">
+        <source src="assets/hero/hs_hero_toast_steam_loop_ai_v01_noaudio.mp4" type="video/mp4">
       </video>
       <div class="hero-video-shield" aria-hidden="true"></div>
       <div class="hero-fallback" style="display:none;position:absolute;inset:0;background:linear-gradient(135deg,#2A1A0C 0%,#3D2415 40%,#1C1208 100%);align-items:center;justify-content:center;flex-direction:column;gap:0.8rem;">
@@ -6628,6 +6683,9 @@ button:focus-visible,
                   <div class="viz-label">4 种原料 → 1 份诚意</div>
                 </div>
               </div>
+              <div class="glass-card-collapse">
+                <button class="glass-card-collapse-btn" data-action="collapse" aria-label="收起详情">收起详情</button>
+              </div>
             </div>
           </div>
 
@@ -6677,6 +6735,9 @@ button:focus-visible,
                     <text class="viz-time" x="10" y="65" font-family="var(--mono,'DM Mono')" font-size="7" fill="rgba(232,169,58,0.7)">45 分钟恒温发酵</text>
                   </svg>
                 </div>
+              </div>
+              <div class="glass-card-collapse">
+                <button class="glass-card-collapse-btn" data-action="collapse" aria-label="收起详情">收起详情</button>
               </div>
             </div>
           </div>
@@ -6731,6 +6792,9 @@ button:focus-visible,
                   </svg>
                   <div class="viz-label">220°C 隧道炉 · 美拉德反应</div>
                 </div>
+              </div>
+              <div class="glass-card-collapse">
+                <button class="glass-card-collapse-btn" data-action="collapse" aria-label="收起详情">收起详情</button>
               </div>
             </div>
           </div>
@@ -6792,6 +6856,9 @@ button:focus-visible,
                   </svg>
                   <div class="viz-label">出炉即锁鲜 · 五大维度</div>
                 </div>
+              </div>
+              <div class="glass-card-collapse">
+                <button class="glass-card-collapse-btn" data-action="collapse" aria-label="收起详情">收起详情</button>
               </div>
             </div>
           </div>
@@ -8092,12 +8159,19 @@ window.addEventListener('scroll', () => {
       });
     });
 
-    // 查看详情按钮（每个 step 一个，事件委托）
+    // 查看详情按钮 + 收起详情按钮（V3.95：事件委托，支持新旧两种按钮）
     if (els.detailToggles.length) {
       els.detailToggles.forEach(btn => {
         btn.addEventListener('click', toggleDetail);
       });
     }
+    // V3.95: 玻璃卡片内的收起按钮，点击触发 toggleDetail
+    document.querySelectorAll('.glass-card-collapse-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleDetail();
+      });
+    });
 
     // ===== V3.70: 玻璃卡片可视化伪3D拖动 =====
     // 拖动 SVG 可视化时产生透视旋转，松开后回弹
