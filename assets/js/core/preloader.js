@@ -278,7 +278,7 @@
       () => loadWithRetry('assets/ui/icon-gesture-hold.svg', 'image'),
       () => loadWithRetry('assets/ui/icon-gesture-swipe.svg', 'image'),
       // 音频 SFX（V3.91: 更新为新音效文件路径）
-      () => loadWithRetry('assets/audio/sfx/wood-tap-soft.mp3', 'audio'),
+      () => loadWithRetry('assets/audio/sfx/haoshi-wood-tap-soft.mp3', 'audio'),
       () => loadWithRetry('assets/audio/sfx/haoshi-ceramic-ting-clean.mp3', 'audio'),
       () => loadWithRetry('assets/audio/sfx/haoshi-golden-chime-warm.mp3', 'audio'),
       () => loadWithRetry('assets/audio/sfx/haoshi-oven-hum-deep.mp3', 'audio')
