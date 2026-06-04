@@ -23,7 +23,9 @@ Thumbs.db
 
 # 旧版本HTML归档（不上传）
 archive/
-豪士面包V*.html
+# 仅保留最近几个版本，其余自动忽略
+Haoshi_V0.0[0-9].html
+Haoshi_V0.1[0-9].html
 
 # 临时文件
 .tmp*/
@@ -41,3 +43,12 @@ nginx.conf
 # Temporary files
 *.tmp
 *.temp
+
+# 开发辅助脚本（不上传）
+cors-server.js
+subset_fonts.py
+subset-zh-fonts.ps1
+chars.txt
+HHaoshi_*.html
+Haoshi_H*.html
+豪士面包V*.html

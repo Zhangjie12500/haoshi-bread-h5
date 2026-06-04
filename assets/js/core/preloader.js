@@ -15,8 +15,8 @@
   const CONFIG = {
     // 预加载并发数
     concurrency: 4,
-    // 预加载超时 (ms) - 优化：缩短到 5 秒
-    timeout: 5000,
+    // 预加载超时 (ms) - V0.14: glow-mask 单帧最大 579KB，steam 最大 7.5KB，需延长
+    timeout: 15000,
     // 重试次数
     retries: 1, // 优化：减少重试次数加快失败检测
     // 重试延迟 (ms)
@@ -277,11 +277,11 @@
       // UI 图标
       () => loadWithRetry('assets/ui/icon-gesture-hold.svg', 'image'),
       () => loadWithRetry('assets/ui/icon-gesture-swipe.svg', 'image'),
-      // 音频 SFX
-      () => loadWithRetry('assets/audio/sfx-click-soft.mp3', 'audio'),
-      () => loadWithRetry('assets/audio/sfx-mode-switch.mp3', 'audio'),
-      () => loadWithRetry('assets/audio/sfx-golden-hit.mp3', 'audio'),
-      () => loadWithRetry('assets/audio/sfx-hold-rise.mp3', 'audio')
+      // 音频 SFX（V3.91: 更新为新音效文件路径）
+      () => loadWithRetry('assets/audio/sfx/wood-tap-soft.mp3', 'audio'),
+      () => loadWithRetry('assets/audio/sfx/haoshi-ceramic-ting-clean.mp3', 'audio'),
+      () => loadWithRetry('assets/audio/sfx/haoshi-golden-chime-warm.mp3', 'audio'),
+      () => loadWithRetry('assets/audio/sfx/haoshi-oven-hum-deep.mp3', 'audio')
     ].concat(steamFrameTasks, glowMaskTasks);
 
     // 更新总进度数
@@ -315,8 +315,8 @@
     console.log('[Preloader] Loading secondary assets (async)...');
 
     const tasks = [
-      // BGM
-      () => loadWithRetry('assets/audio/bgm-diamonds-ra-costelloe.mp3', 'audio'),
+      // BGM（V3.92: 更新为新品牌 BGM，路径移动到 bgm/）
+      () => loadWithRetry('assets/audio/bgm/haoshi-bgm-morning.mp3', 'audio'),
       // Story 图片
       () => loadWithRetry('assets/story/factory-1995.jpg', 'image'),
       // Social QR

@@ -123,6 +123,10 @@
       if (config.onToggle) {
         config.onToggle();
       }
+      // V3.92: 音效反馈
+      if (global.AudioManager) {
+        AudioManager.playSFX('switch');
+      }
     });
 
     // Hover 效果
@@ -174,8 +178,39 @@
 
   /**
    * 将声音开关添加到页面
+   * V3.80: 优先复用 HTML 中已存在的 nav#sound-toggle，避免重复创建
    */
-  function mount(container = document.body) {
+  function mount(container) {
+    // V3.80: 检查 nav 内是否已有 #sound-toggle 按钮
+    const existingNavToggle = document.getElementById('sound-toggle');
+    if (existingNavToggle) {
+      // 复用现有的 nav 按钮：只需绑定点击事件
+      existingNavToggle.addEventListener('click', () => {
+        if (global.AudioManager) {
+          AudioManager.toggle().then(state => {
+            updateSoundToggleState(state.userMuted);
+          });
+        }
+      });
+      existingNavToggle.addEventListener('touchstart', () => {
+        existingNavToggle.style.transform = 'scale(0.92)';
+      }, { passive: true });
+      existingNavToggle.addEventListener('touchend', () => {
+        setTimeout(() => { existingNavToggle.style.transform = ''; }, 150);
+      }, { passive: true });
+      existingNavToggle.addEventListener('mouseleave', () => {
+        existingNavToggle.style.transform = '';
+      });
+      // 初始化状态
+      if (global.AudioManager) {
+        const state = AudioManager.getState();
+        updateSoundToggleState(state.userMuted);
+      }
+      console.log('[SoundToggle] V3.80: reusing existing nav button');
+      return existingNavToggle;
+    }
+
+    // 没有现成的，就创建 fixed 按钮
     const toggle = createSoundToggle({
       onToggle: () => {
         if (global.AudioManager) {
@@ -185,15 +220,12 @@
         }
       }
     });
-
-    container.appendChild(toggle);
-
-    // 读取初始状态
+    (container || document.body).appendChild(toggle);
     if (global.AudioManager) {
       const state = AudioManager.getState();
       updateSoundToggleState(state.userMuted);
     }
-
+    console.log('[SoundToggle] V3.80: created new fixed button');
     return toggle;
   }
 
