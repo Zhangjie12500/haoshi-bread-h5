@@ -13,14 +13,14 @@
 
   // ========== 配置 ==========
   const CONFIG = {
-    // 预加载并发数
-    concurrency: 4,
-    // 预加载超时 (ms) - V0.14: glow-mask 单帧最大 579KB，steam 最大 7.5KB，需延长
-    timeout: 15000,
-    // 重试次数
-    retries: 1, // 优化：减少重试次数加快失败检测
+    // 预加载并发数（降低：移动端/慢网络下减少并发，避免单个大文件阻塞）
+    concurrency: 2,
+    // 预加载超时 (ms) - V0.22: 延长至 30s，确保移动端大 WebP 图片有足够加载时间
+    timeout: 30000,
+    // 重试次数（增加：增强弱网环境下的加载成功率）
+    retries: 3,
     // 重试延迟 (ms)
-    retryDelay: 300
+    retryDelay: 500
   };
 
   // ========== Ready Flags ==========
