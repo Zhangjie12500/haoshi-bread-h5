@@ -314,9 +314,22 @@
   async function loadSecondaryAssets() {
     console.log('[Preloader] Loading secondary assets (async)...');
 
+    // V4.0: 网络感知 BGM 选源（弱网用 48kbps mono）
+    var isSlow = false;
+    if (navigator.connection) {
+      var ct = navigator.connection.effectiveType;
+      var crtt = navigator.connection.rtt;
+      if (ct === 'slow-2g' || ct === '2g' || ct === '3g') isSlow = true;
+      if (crtt && crtt > 300) isSlow = true;
+    }
+    if (/MicroMessenger/.test(navigator.userAgent)) isSlow = true;
+    var bgmSrc = isSlow
+      ? 'assets/audio/bgm/haoshi-bgm-morning-low.mp3'
+      : 'assets/audio/bgm/haoshi-bgm-morning.mp3';
+
     const tasks = [
-      // BGM（V3.92: 更新为新品牌 BGM，路径移动到 bgm/）
-      () => loadWithRetry('assets/audio/bgm/haoshi-bgm-morning.mp3', 'audio'),
+      // BGM（V4.0: 网络感知选源，弱网 48kbps mono / 强网 128kbps stereo）
+      () => loadWithRetry(bgmSrc, 'audio'),
       // Story 图片
       () => loadWithRetry('assets/story/factory-1995.jpg', 'image'),
       // Social QR

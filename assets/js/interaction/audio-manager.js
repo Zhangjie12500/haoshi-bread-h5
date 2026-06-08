@@ -1,14 +1,15 @@
 /**
  * ============================================================
- * HAOSHI Audio Manager — V3.90
+ * HAOSHI Audio Manager — V4.0
  * ============================================================
  * 规格（V2.0 音效清单）：
- * - BGM: haoshi-bgm-morning.mp3
+ * - BGM: haoshi-bgm-morning.mp3 (128kbps) / morning-low.mp3 (48kbps mono)
  * - SFX: 12 声音原子 + 2 Loader 专用音效（V3.90 完整映射）
  * - 感知时长策略：所有 SFX 统一感知上限 150ms（超长音效 150ms 后淡出截断）
  * - 首触启音：用户首次交互后自动播放 BGM（需非静音偏好）
  * - localStorage 持久化静音偏好
  * - 懒加载 SFX：首访交互后加载，不影响 FCP
+ * - V4.0: 网络感知 BGM 选源（弱网自动降级到 48kbps mono）
  * ============================================================
  */
 
@@ -25,10 +26,34 @@
     autoPlaySuccess: false
   };
 
+  // ========== 网络感知 BGM 选源 ==========
+  function selectBGMSrc() {
+    var isSlow = false;
+    // Network Information API
+    if (navigator.connection) {
+      var type = navigator.connection.effectiveType;
+      var rtt = navigator.connection.rtt;
+      // effectiveType: 'slow-2g' | '2g' | '3g' | '4g'
+      // 2g/3g 或 RTT > 300ms 使用低码率
+      if (type === 'slow-2g' || type === '2g' || type === '3g') isSlow = true;
+      if (rtt && rtt > 300) isSlow = true;
+    }
+    // 微信浏览器额外判断：微信环境通常网络更差
+    if (/MicroMessenger/.test(navigator.userAgent)) isSlow = true;
+
+    if (isSlow) {
+      console.log('[Audio] V4.0: Slow network detected, using low-bitrate BGM (48kbps mono)');
+      return 'assets/audio/bgm/haoshi-bgm-morning-low.mp3';
+    }
+    return 'assets/audio/bgm/haoshi-bgm-morning.mp3';
+  }
+
   // ========== 音频配置 ==========
   const AudioConfig = {
     bgm: {
-      src: 'assets/audio/bgm/haoshi-bgm-morning.mp3',   // V3.92: 移动到 bgm/ 子目录
+      src: selectBGMSrc(),                  // V4.0: 网络感知选源
+      srcHigh: 'assets/audio/bgm/haoshi-bgm-morning.mp3',     // 128kbps stereo
+      srcLow:  'assets/audio/bgm/haoshi-bgm-morning-low.mp3',  // 48kbps mono
       volume: 0.12,                         // 用户确认默认音量
       fadeInDuration: 1000,
       fadeOutDuration: 300,

@@ -1,0 +1,46 @@
+# ============================================================
+# HAOSHI .vercelignore — 排除不必要的部署文件
+# 节省 ~40MB+ 部署体积，提升移动端加载速度
+# ============================================================
+
+# TTF 原字体文件（仅 woff2 被引用）
+assets/fonts/*.ttf
+
+# Windows 转换工具（非 Web 资源）
+assets/factory3d/glb/FBX2glTF-windows-x64.exe
+
+# 旧版音频文件（已迁移到 V2.0 音效系统）
+assets/audio/legacy/
+
+# Google Fonts CSS 保留（Cormorant Garamond + DM Mono 本地 TTF 声明）
+# 注意：assets/css/google-fonts.css 是旧版本（引用 fonts.gstatic.com），已不再使用，排除
+assets/css/google-fonts.css
+
+# 3D 参考缩略图（已优化到 WebP）
+assets/factory3d/refs/*-sm.webp
+
+# steam-loop 帧动画 — 仅保留前 12 帧
+assets/fx/steam-loop/ezgif-frame-*.png
+!assets/fx/steam-loop/ezgif-frame-001.png
+!assets/fx/steam-loop/ezgif-frame-002.png
+!assets/fx/steam-loop/ezgif-frame-003.png
+!assets/fx/steam-loop/ezgif-frame-004.png
+!assets/fx/steam-loop/ezgif-frame-005.png
+!assets/fx/steam-loop/ezgif-frame-006.png
+!assets/fx/steam-loop/ezgif-frame-007.png
+!assets/fx/steam-loop/ezgif-frame-008.png
+!assets/fx/steam-loop/ezgif-frame-009.png
+!assets/fx/steam-loop/ezgif-frame-010.png
+!assets/fx/steam-loop/ezgif-frame-011.png
+!assets/fx/steam-loop/ezgif-frame-012.png
+
+# glow-mask 帧动画 — 仅保留前 8 帧
+assets/fx/glow-mask/ezgif-frame-*.png
+!assets/fx/glow-mask/ezgif-frame-001.png
+!assets/fx/glow-mask/ezgif-frame-002.png
+!assets/fx/glow-mask/ezgif-frame-003.png
+!assets/fx/glow-mask/ezgif-frame-004.png
+!assets/fx/glow-mask/ezgif-frame-005.png
+!assets/fx/glow-mask/ezgif-frame-006.png
+!assets/fx/glow-mask/ezgif-frame-007.png
+!assets/fx/glow-mask/ezgif-frame-008.png
