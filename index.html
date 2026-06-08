@@ -35,12 +35,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>豪士 HAOSHI — V3.81 Localized + V0.15 Fixes (Info Panel Flash, Flour 0.7x)</title>
+<title>豪士 HAOSHI — V4.0 Mobile Perf (Local Fonts, Deferred 3D, BGM 48kbps)</title>
 <link href="assets/cdn/google-fonts.css" rel="stylesheet">
-<!-- V3.80: 中文字体改为本地 woff2（Noto + LXGW），不再依赖 Google Fonts CDN（微信兼容性优化）-->
-<script src="assets/cdn/three.min.js"></script>
-<script src="assets/cdn/GLTFLoader.min.js"></script>
-<!-- V5.0: GSAP + ScrollTrigger for Cinematic Hero Animation -->
+<!-- V4.0: 所有字体本地化（woff2/TTF），零外部 CDN 依赖
+     google-fonts.css 仅声明 Cormorant Garamond + DM Mono 的本地 TTF（assets/cdn/）
+     中文字体声明（Noto + LXGW woff2）内联于下方 @font-face 块 -->
+<!-- V4.0: 关键中文字体 woff2 预加载 -->
+<link rel="preload" href="assets/fonts/noto-serif-sc-chinese-simplified-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/noto-sans-sc-chinese-simplified-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<script src="assets/cdn/three.min.js" defer></script>
+<script src="assets/cdn/GLTFLoader.min.js" defer></script>
+<!-- V5.0: GSAP + ScrollTrigger for Hero（同步，Hero 动画必需）-->
 <script src="assets/cdn/gsap.min.js"></script>
 <script src="assets/cdn/ScrollTrigger.min.js"></script>
 <script>
@@ -6919,7 +6924,7 @@ button:focus-visible,
   </div>
   <div class="ingredients-grid">
     <div class="ing-card reveal animate-entrance" data-delay="1" data-ing="wheat">
-      <video class="ing-card-video" src="assets/ingredient/wheat-macro.mp4" muted loop playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video>
+      <video class="ing-card-video" src="assets/ingredient/wheat-macro.mp4" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
       <div class="ing-card-overlay"></div>
       <div class="ing-card-content">
         <div class="ing-emoji">
@@ -6936,7 +6941,7 @@ button:focus-visible,
       </div>
     </div>
     <div class="ing-card reveal animate-entrance" data-delay="2" data-ing="milk">
-      <video class="ing-card-video" src="assets/ingredient/milk-macro.mp4" muted loop playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video>
+      <video class="ing-card-video" src="assets/ingredient/milk-macro.mp4" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
       <div class="ing-card-overlay"></div>
       <div class="ing-card-content">
         <div class="ing-emoji">
@@ -6952,7 +6957,7 @@ button:focus-visible,
       </div>
     </div>
     <div class="ing-card reveal animate-entrance" data-delay="3" data-ing="egg">
-      <video class="ing-card-video" src="assets/ingredient/egg-macro.mp4" muted loop playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video>
+      <video class="ing-card-video" src="assets/ingredient/egg-macro.mp4" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
       <div class="ing-card-overlay"></div>
       <div class="ing-card-content">
         <div class="ing-emoji">
@@ -6969,7 +6974,7 @@ button:focus-visible,
       </div>
     </div>
     <div class="ing-card reveal animate-entrance" data-delay="4" data-ing="yeast">
-      <video class="ing-card-video" src="assets/ingredient/yeast-macro.mp4" muted loop playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video>
+      <video class="ing-card-video" src="assets/ingredient/yeast-macro.mp4" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
       <div class="ing-card-overlay"></div>
       <div class="ing-card-content">
         <div class="ing-emoji">
