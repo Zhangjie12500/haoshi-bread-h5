@@ -234,11 +234,8 @@
     // V3.95: 整面可点击 — 点击 loader-svg-wrap 或 loaderEl 任意处都能触发加载
     loaderEl.addEventListener('click', function(e) {
       if (loaderDone) return;
-      // 防止重复触发
       if (tlWire.isActive() && !tlWire.paused()) return;
-      // 点击事件传播到 promptEl 时会由 promptEl 的专属 handler 处理，这里只处理空白区域的点击
       if (e.target.closest('.loader-prompt')) return;
-      // 空白区域点击：触发 loader 继续
       if (promptEl) {
         promptEl.classList.add('hidden');
         if (window.AudioManager) window.AudioManager.playSFX('click');
@@ -6514,7 +6511,7 @@ button:focus-visible,
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
         onplay="this.muted=true;"
       >
-        <source src="assets/hero/hs_hero_toast_steam_loop_ai_v01.mp4" type="video/mp4">
+        <source src="assets/hero/hs_hero_toast_steam_loop_ai_v01_noaudio.mp4" type="video/mp4">
       </video>
       <div class="hero-video-shield" aria-hidden="true"></div>
       <div class="hero-fallback" style="display:none;position:absolute;inset:0;background:linear-gradient(135deg,#2A1A0C 0%,#3D2415 40%,#1C1208 100%);align-items:center;justify-content:center;flex-direction:column;gap:0.8rem;">
@@ -6590,7 +6587,7 @@ button:focus-visible,
 
           <!-- 图片层 -->
           <div class="journey-img j-img-1 active" id="jimg-0">
-            <img src="assets/journey/stage-1-dough.webp" alt="揉制面团" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <img src="assets/journey/stage-1-dough.webp" alt="生面团" style="width:100%;height:100%;object-fit:cover;" loading="eager" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
             <svg style="display:none;position:absolute;width:100%;height:100%;" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
               <ellipse cx="100" cy="120" rx="70" ry="50" fill="rgba(250,246,238,0.1)" stroke="rgba(250,246,238,0.2)" stroke-width="1"/>
               <path d="M50 110 Q70 90 90 100 Q110 84 130 100 Q150 90 160 110" stroke="rgba(250,246,238,0.15)" stroke-width="1" fill="none"/>
